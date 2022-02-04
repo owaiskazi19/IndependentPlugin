@@ -449,86 +449,6 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
         serverBootstraps.put(name, serverBootstrap);
     }
 
-    // Test Send Request
-
-
-
-    public AtomicReference<ActionListener<Void>> getListenerCaptor() {
-        return new AtomicReference();
-    }
-
-
-    public void testSendRequest() throws IOException {
-        ThreadContext threadContext = threadPool.getThreadContext();
-        Version version = Version.CURRENT;
-        String action = "handshake";
-        long requestId = 200;
-        boolean isHandshake = true;
-        boolean compress = true;
-        String value = "message";
-        threadContext.putHeader("header", "header_value");
-        TestRequest request = new TestRequest(value);
-
-        AtomicReference<DiscoveryNode> nodeRef = new AtomicReference<>();
-        AtomicLong requestIdRef = new AtomicLong();
-        AtomicReference<String> actionRef = new AtomicReference<>();
-        AtomicReference<TransportRequest> requestRef = new AtomicReference<>();
-        handler.setMessageListener(new TransportMessageListener() {
-            @Override
-            public void onRequestSent(
-                    DiscoveryNode node,
-                    long requestId,
-                    String action,
-                    TransportRequest request,
-                    TransportRequestOptions options
-            ) {
-                nodeRef.set(node);
-                requestIdRef.set(requestId);
-                actionRef.set(action);
-                requestRef.set(request);
-            }
-        });
-        handler.sendRequest(node, channel, requestId, action, request, options, version, compress, isHandshake);
-
-        //BytesReference reference = channel.getMessageCaptor().get();
-        ActionListener<Void> sendListener = getListenerCaptor().get();
-        boolean flag = true;
-        if (flag) {
-            sendListener.onResponse(null);
-        } else {
-            sendListener.onFailure(new IOException("failed"));
-        }
-//        assertEquals(node, nodeRef.get());
-//        assertEquals(requestId, requestIdRef.get());
-//        assertEquals(action, actionRef.get());
-//        assertEquals(request, requestRef.get());
-
-        //pipeline.handleBytes(channel, new ReleasableBytesReference(reference, () -> {}));
-        final Tuple<Header, BytesReference> tuple = message.get();
-        final Header header = tuple.v1();
-        final TestRequest message = new TestRequest(tuple.v2().streamInput());
-        logger.debug("VERSION", version);
-        logger.debug("HEADER", header);
-        logger.debug("MESSAGE", message);
-       // assertEquals(version, header);
-//        assertEquals(requestId, header.getRequestId());
-//        assertTrue(header.isRequest());
-//        assertFalse(header.isResponse());
-//        if (isHandshake) {
-//            assertTrue(header.isHandshake());
-//        } else {
-//            assertFalse(header.isHandshake());
-//        }
-//        if (compress) {
-//            assertTrue(header.isCompressed());
-//        } else {
-//            assertFalse(header.isCompressed());
-//        }
-
-//        assertEquals(value, message.value);
-//        assertEquals("header_value", header.getHeaders().v1().get("header"));
-    }
-
 
 
     public static void main(String[] args) throws IOException {
@@ -599,6 +519,5 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
             newPlugin.createServerBootstrap(profileSettings, sharedGroup);
             newPlugin.bindServer(profileSettings);
         }
-        newPlugin.testSendRequest();
     }
 }
