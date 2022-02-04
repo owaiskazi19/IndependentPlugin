@@ -1,0 +1,20 @@
+
+# intellij files
+.idea/
+*.iml
+*.ipr
+*.iws
+build-idea/
+out/
+
+# gradle stuff
+.gradle/
+build/
+
+bin/
+
+# vscode stuff
+.vscode/
+
+# osx stuff
+.DS_Store
