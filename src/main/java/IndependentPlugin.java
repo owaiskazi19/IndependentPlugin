@@ -1,25 +1,21 @@
 import com.carrotsearch.hppc.IntHashSet;
 import com.carrotsearch.hppc.IntSet;
+import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioChannelOption;
 import io.netty.util.AttributeKey;
 import netty4.Netty4TcpChannel;
 import netty4.Netty4TcpServerChannel;
-import org.opensearch.Version;
-import org.opensearch.common.bytes.BytesReference;
-import org.opensearch.common.bytes.ReleasableBytesReference;
-import org.opensearch.common.util.concurrent.ThreadContext;
-import transport.TcpChannel;
-import transport.OutboundHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.ExceptionsHelper;
+import org.opensearch.Version;
 import org.opensearch.action.ActionListener;
 import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.common.Strings;
+import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.collect.Tuple;
-import org.opensearch.common.component.AbstractLifecycleComponent;
 import org.opensearch.common.network.NetworkAddress;
 import org.opensearch.common.network.NetworkService;
 import org.opensearch.common.settings.Setting;
@@ -31,6 +27,7 @@ import org.opensearch.common.unit.ByteSizeUnit;
 import org.opensearch.common.unit.ByteSizeValue;
 import org.opensearch.common.util.concurrent.ConcurrentCollections;
 import org.opensearch.common.util.concurrent.OpenSearchExecutors;
+import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.core.internal.net.NetUtils;
 import org.opensearch.env.Environment;
 import org.opensearch.plugins.DiscoveryPlugin;
@@ -38,13 +35,14 @@ import org.opensearch.plugins.Plugin;
 import org.opensearch.plugins.PluginInfo;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.*;
-import io.netty.bootstrap.ServerBootstrap;
+import transport.OutboundHandler;
+import transport.TcpChannel;
+import transport.TransportService;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketOption;
-import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -56,7 +54,7 @@ import java.util.stream.Collectors;
 import static org.opensearch.common.settings.Setting.byteSizeSetting;
 import static org.opensearch.common.util.concurrent.ConcurrentCollections.newConcurrentMap;
 
-public abstract class IndependentPlugin extends AbstractLifecycleComponent implements Transport {
+public class IndependentPlugin extends TransportService implements Transport {
     protected static Set<NewPlugin.ProfileSettings> profileSettings = getProfileSettings(Settings.builder().put("transport.profiles.test.port", "5555").put("transport.profiles.default.port", "3333").build());
     private static final Logger logger = LogManager.getLogger(IndependentPlugin.class);
     private static Environment env;
@@ -102,6 +100,31 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
                 logger.debug(() -> new ParameterizedMessage("exception while closing channel: {}", channel), f.cause());
             }
         });
+    }
+
+    @Override
+    public void setMessageListener(TransportMessageListener transportMessageListener) {
+
+    }
+
+    @Override
+    public Map<String, BoundTransportAddress> profileBoundAddresses() {
+        return null;
+    }
+
+    @Override
+    public TransportStats getStats() {
+        return null;
+    }
+
+    @Override
+    public ResponseHandlers getResponseHandlers() {
+        return null;
+    }
+
+    @Override
+    public RequestHandlers getRequestHandlers() {
+        return null;
     }
 
     protected class ServerChannelInitializer extends ChannelInitializer<Channel> {
@@ -160,7 +183,9 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
             Setting.Property.NodeScope
     );
 
-    protected IndependentPlugin(SharedGroupFactory sharedGroupFactory) {
+    public IndependentPlugin() {
+
+        super(null, null, null, null, null, null ,null, null);
         this.sharedGroupFactory = sharedGroupFactory;
         this.threadPool = new TestThreadPool("test");;
         this.receivePredictorMin = NETTY_RECEIVE_PREDICTOR_MIN.get(settings);
@@ -176,7 +201,10 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
         }
     }
 
-
+    @Override
+    public void doStart() {
+        super(null, null, null, null, null, null, null, null);
+    }
     // Another clas
 
 
@@ -267,7 +295,7 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
         return boundSocket.get();
     }
 
-    public static int resolvePublishPort(NewPlugin.ProfileSettings profileSettings, List<InetSocketAddress> boundAddresses, InetAddress publishInetAddress) {
+    public static int resolvePublishPort(TcpTransport.ProfileSettings profileSettings, List<InetSocketAddress> boundAddresses, InetAddress publishInetAddress) {
         int publishPort = profileSettings.publishPort;
 
         // if port not explicitly provided, search for port of address in boundAddresses that matches publishInetAddress
@@ -312,7 +340,7 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
     }
 
 
-    private static BoundTransportAddress createBoundTransportAddress(NewPlugin.ProfileSettings profileSettings, List<InetSocketAddress> boundAddresses) {
+    private static BoundTransportAddress createBoundTransportAddress(TcpTransport.ProfileSettings profileSettings, List<InetSocketAddress> boundAddresses) {
         String[] boundAddressesHostStrings = new String[boundAddresses.size()];
         TransportAddress[] transportBoundAddresses = new TransportAddress[boundAddresses.size()];
         for (int i = 0; i < boundAddresses.size(); i++) {
@@ -342,7 +370,7 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
     }
 
 
-    protected final void bindServer(NewPlugin.ProfileSettings profileSettings) {
+    protected final void bindServer(TcpTransport.ProfileSettings profileSettings) {
         // Bind and start to accept incoming connections.
         System.out.println("PROFILE");
         //logger.info("PROFILE", profileSettings);
@@ -377,7 +405,7 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
         }
     }
 
-    private void createServerBootstrap(NewPlugin.ProfileSettings profileSettings, SharedGroupFactory.SharedGroup sharedGroup) {
+    void createServerBootstrap(TcpTransport.ProfileSettings profileSettings, SharedGroupFactory.SharedGroup sharedGroup) {
         String name = profileSettings.profileName;
         if (logger.isDebugEnabled()) {
             logger.debug(
@@ -531,74 +559,16 @@ public abstract class IndependentPlugin extends AbstractLifecycleComponent imple
 
 
 
-    public static void main(String[] args) throws IOException {
-        IndependentPlugin newPlugin = new IndependentPlugin(new SharedGroupFactory(settings)) {
-            @Override
-            protected void doStart() {
-
-            }
-
-            @Override
-            protected void doStop() {
-
-            }
-
-            @Override
-            protected void doClose() throws IOException {
-
-            }
-
-            @Override
-            public void setMessageListener(TransportMessageListener transportMessageListener) {
-
-            }
-
-            @Override
-            public BoundTransportAddress boundAddress() {
-                return null;
-            }
-
-            @Override
-            public Map<String, BoundTransportAddress> profileBoundAddresses() {
-                return null;
-            }
-
-            @Override
-            public TransportAddress[] addressesFromString(String s) throws UnknownHostException {
-                return new TransportAddress[0];
-            }
-
-            @Override
-            public List<String> getDefaultSeedAddresses() {
-                return null;
-            }
-
-            @Override
-            public void openConnection(DiscoveryNode discoveryNode, ConnectionProfile connectionProfile, ActionListener<Connection> actionListener) {
-
-            }
-
-            @Override
-            public TransportStats getStats() {
-                return null;
-            }
-
-            @Override
-            public ResponseHandlers getResponseHandlers() {
-                return null;
-            }
-
-            @Override
-            public RequestHandlers getRequestHandlers() {
-                return null;
-            }
-        };
-        sharedGroup = sharedGroupFactory.getTransportGroup();
-
-        for (NewPlugin.ProfileSettings profileSettings : profileSettings) {
-            newPlugin.createServerBootstrap(profileSettings, sharedGroup);
-            newPlugin.bindServer(profileSettings);
-        }
-        newPlugin.testSendRequest();
-    }
+//    public static void main(String[] args) throws IOException {
+//        IndependentPlugin newPlugin = new IndependentPlugin(new SharedGroupFactory(settings));
+//        sharedGroup = sharedGroupFactory.getTransportGroup();
+//
+//        for (NewPlugin.ProfileSettings profileSettings : profileSettings) {
+//            newPlugin.createServerBootstrap(profileSettings, sharedGroup);
+//            newPlugin.bindServer(profileSettings);
+//        }
+//
+//
+//
+//    }
 }
