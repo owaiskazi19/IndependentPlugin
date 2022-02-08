@@ -33,7 +33,7 @@ ext {
 
 apply plugin: 'application'
 
-mainClassName = 'IndependentPlugin'
+mainClassName = 'RunPlugin'
 
 group 'org.example'
 version '1.0-SNAPSHOT'

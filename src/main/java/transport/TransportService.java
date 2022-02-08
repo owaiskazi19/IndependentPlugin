@@ -236,7 +236,7 @@ public class TransportService extends AbstractLifecycleComponent
     }
 
     @Override
-    protected void doStart() {
+    public void doStart() {
         transport.setMessageListener(this);
         connectionManager.addListener(this);
         transport.start();

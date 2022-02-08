@@ -16,6 +16,7 @@ import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.common.Strings;
 import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.collect.Tuple;
+import org.opensearch.common.component.AbstractLifecycleComponent;
 import org.opensearch.common.network.NetworkAddress;
 import org.opensearch.common.network.NetworkService;
 import org.opensearch.common.settings.Setting;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketOption;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -54,7 +56,7 @@ import java.util.stream.Collectors;
 import static org.opensearch.common.settings.Setting.byteSizeSetting;
 import static org.opensearch.common.util.concurrent.ConcurrentCollections.newConcurrentMap;
 
-public class IndependentPlugin extends TransportService implements Transport {
+public class IndependentPlugin extends AbstractLifecycleComponent implements Transport {
     protected static Set<NewPlugin.ProfileSettings> profileSettings = getProfileSettings(Settings.builder().put("transport.profiles.test.port", "5555").put("transport.profiles.default.port", "3333").build());
     private static final Logger logger = LogManager.getLogger(IndependentPlugin.class);
     private static Environment env;
@@ -73,9 +75,6 @@ public class IndependentPlugin extends TransportService implements Transport {
     static final AttributeKey<Netty4TcpChannel> CHANNEL_KEY = AttributeKey.newInstance("es-channel");
     private final Set<TcpChannel> acceptedChannels = ConcurrentCollections.newConcurrentSet();
     protected final ThreadPool threadPool;
-    private OutboundHandler handler;
-    private TcpChannel channel;
-    private DiscoveryNode node;
     private final TransportRequestOptions options = TransportRequestOptions.EMPTY;
     private final AtomicReference<Tuple<org.opensearch.transport.Header, BytesReference>> message = new AtomicReference<>();
     private static final Settings settings = Settings.builder()
@@ -103,13 +102,48 @@ public class IndependentPlugin extends TransportService implements Transport {
     }
 
     @Override
+    protected void doStart() {
+
+    }
+
+    @Override
+    protected void doStop() {
+
+    }
+
+    @Override
+    protected void doClose() throws IOException {
+
+    }
+
+    @Override
     public void setMessageListener(TransportMessageListener transportMessageListener) {
 
     }
 
     @Override
+    public BoundTransportAddress boundAddress() {
+        return null;
+    }
+
+    @Override
     public Map<String, BoundTransportAddress> profileBoundAddresses() {
         return null;
+    }
+
+    @Override
+    public TransportAddress[] addressesFromString(String s) throws UnknownHostException {
+        return new TransportAddress[0];
+    }
+
+    @Override
+    public List<String> getDefaultSeedAddresses() {
+        return null;
+    }
+
+    @Override
+    public void openConnection(DiscoveryNode discoveryNode, ConnectionProfile connectionProfile, ActionListener<Connection> actionListener) {
+
     }
 
     @Override
@@ -126,6 +160,7 @@ public class IndependentPlugin extends TransportService implements Transport {
     public RequestHandlers getRequestHandlers() {
         return null;
     }
+
 
     protected class ServerChannelInitializer extends ChannelInitializer<Channel> {
 
@@ -183,10 +218,9 @@ public class IndependentPlugin extends TransportService implements Transport {
             Setting.Property.NodeScope
     );
 
-    public IndependentPlugin() {
-
-        super(null, null, null, null, null, null ,null, null);
+    public IndependentPlugin(SharedGroupFactory sharedGroupFactory) {
         this.sharedGroupFactory = sharedGroupFactory;
+        this.sharedGroup = sharedGroupFactory.getTransportGroup();
         this.threadPool = new TestThreadPool("test");;
         this.receivePredictorMin = NETTY_RECEIVE_PREDICTOR_MIN.get(settings);
         this.receivePredictorMax = NETTY_RECEIVE_PREDICTOR_MAX.get(settings);
@@ -201,10 +235,6 @@ public class IndependentPlugin extends TransportService implements Transport {
         }
     }
 
-    @Override
-    public void doStart() {
-        super(null, null, null, null, null, null, null, null);
-    }
     // Another clas
 
 
@@ -405,7 +435,7 @@ public class IndependentPlugin extends TransportService implements Transport {
         }
     }
 
-    void createServerBootstrap(TcpTransport.ProfileSettings profileSettings, SharedGroupFactory.SharedGroup sharedGroup) {
+    void createServerBootstrap(TcpTransport.ProfileSettings profileSettings) {
         String name = profileSettings.profileName;
         if (logger.isDebugEnabled()) {
             logger.debug(
@@ -422,7 +452,7 @@ public class IndependentPlugin extends TransportService implements Transport {
 
         final ServerBootstrap serverBootstrap = new ServerBootstrap();
 
-        serverBootstrap.group(sharedGroup.getLowLevelGroup());
+        serverBootstrap.group(this.sharedGroup.getLowLevelGroup());
 
         // NettyAllocator will return the channel type designed to work with the configuredAllocator
         serverBootstrap.channel(NettyAllocator.getServerChannelType());
@@ -477,98 +507,4 @@ public class IndependentPlugin extends TransportService implements Transport {
         serverBootstraps.put(name, serverBootstrap);
     }
 
-    // Test Send Request
-
-
-
-    public AtomicReference<ActionListener<Void>> getListenerCaptor() {
-        return new AtomicReference();
-    }
-
-
-    public void testSendRequest() throws IOException {
-        ThreadContext threadContext = threadPool.getThreadContext();
-        Version version = Version.CURRENT;
-        String action = "handshake";
-        long requestId = 200;
-        boolean isHandshake = true;
-        boolean compress = true;
-        String value = "message";
-        threadContext.putHeader("header", "header_value");
-        TestRequest request = new TestRequest(value);
-
-        AtomicReference<DiscoveryNode> nodeRef = new AtomicReference<>();
-        AtomicLong requestIdRef = new AtomicLong();
-        AtomicReference<String> actionRef = new AtomicReference<>();
-        AtomicReference<TransportRequest> requestRef = new AtomicReference<>();
-        handler.setMessageListener(new TransportMessageListener() {
-            @Override
-            public void onRequestSent(
-                    DiscoveryNode node,
-                    long requestId,
-                    String action,
-                    TransportRequest request,
-                    TransportRequestOptions options
-            ) {
-                nodeRef.set(node);
-                requestIdRef.set(requestId);
-                actionRef.set(action);
-                requestRef.set(request);
-            }
-        });
-        handler.sendRequest(node, channel, requestId, action, request, options, version, compress, isHandshake);
-
-        //BytesReference reference = channel.getMessageCaptor().get();
-        ActionListener<Void> sendListener = getListenerCaptor().get();
-        boolean flag = true;
-        if (flag) {
-            sendListener.onResponse(null);
-        } else {
-            sendListener.onFailure(new IOException("failed"));
-        }
-//        assertEquals(node, nodeRef.get());
-//        assertEquals(requestId, requestIdRef.get());
-//        assertEquals(action, actionRef.get());
-//        assertEquals(request, requestRef.get());
-
-        //pipeline.handleBytes(channel, new ReleasableBytesReference(reference, () -> {}));
-        final Tuple<Header, BytesReference> tuple = message.get();
-        final Header header = tuple.v1();
-        final TestRequest message = new TestRequest(tuple.v2().streamInput());
-        logger.debug("VERSION", version);
-        logger.debug("HEADER", header);
-        logger.debug("MESSAGE", message);
-       // assertEquals(version, header);
-//        assertEquals(requestId, header.getRequestId());
-//        assertTrue(header.isRequest());
-//        assertFalse(header.isResponse());
-//        if (isHandshake) {
-//            assertTrue(header.isHandshake());
-//        } else {
-//            assertFalse(header.isHandshake());
-//        }
-//        if (compress) {
-//            assertTrue(header.isCompressed());
-//        } else {
-//            assertFalse(header.isCompressed());
-//        }
-
-//        assertEquals(value, message.value);
-//        assertEquals("header_value", header.getHeaders().v1().get("header"));
-    }
-
-
-
-//    public static void main(String[] args) throws IOException {
-//        IndependentPlugin newPlugin = new IndependentPlugin(new SharedGroupFactory(settings));
-//        sharedGroup = sharedGroupFactory.getTransportGroup();
-//
-//        for (NewPlugin.ProfileSettings profileSettings : profileSettings) {
-//            newPlugin.createServerBootstrap(profileSettings, sharedGroup);
-//            newPlugin.bindServer(profileSettings);
-//        }
-//
-//
-//
-//    }
 }
