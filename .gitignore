@@ -4,6 +4,7 @@
 *.iml
 *.ipr
 *.iws
+*.log
 build-idea/
 out/
 
