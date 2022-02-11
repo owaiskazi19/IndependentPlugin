@@ -43,7 +43,7 @@ import org.opensearch.transport.*;
 import java.io.IOException;
 import java.util.Set;
 
-abstract class OutboundMessage extends NetworkMessage {
+abstract class OutboundMessage extends transportservice.transport.NetworkMessage {
 
     private final Writeable message;
 
@@ -66,7 +66,7 @@ abstract class OutboundMessage extends NetworkMessage {
             variableHeaderLength = Math.toIntExact(bytesStream.position() - preHeaderPosition);
         }
 
-        try (CompressibleBytesOutputStream stream = new CompressibleBytesOutputStream(bytesStream, TransportStatus.isCompress(status))) {
+        try (transportservice.transport.CompressibleBytesOutputStream stream = new transportservice.transport.CompressibleBytesOutputStream(bytesStream, transportservice.transport.TransportStatus.isCompress(status))) {
             stream.setVersion(version);
             stream.setFeatures(bytesStream.getFeatures());
 
@@ -86,10 +86,10 @@ abstract class OutboundMessage extends NetworkMessage {
         threadContext.writeTo(stream);
     }
 
-    protected BytesReference writeMessage(CompressibleBytesOutputStream stream) throws IOException {
+    protected BytesReference writeMessage(transportservice.transport.CompressibleBytesOutputStream stream) throws IOException {
         final BytesReference zeroCopyBuffer;
-        if (message instanceof BytesTransportRequest) {
-            BytesTransportRequest bRequest = (BytesTransportRequest) message;
+        if (message instanceof transportservice.transport.BytesTransportRequest) {
+            transportservice.transport.BytesTransportRequest bRequest = (transportservice.transport.BytesTransportRequest) message;
             bRequest.writeThin(stream);
             zeroCopyBuffer = bRequest.bytes;
         } else if (message instanceof RemoteTransportException) {
@@ -141,12 +141,12 @@ abstract class OutboundMessage extends NetworkMessage {
 
         private static byte setStatus(boolean compress, boolean isHandshake, Writeable message) {
             byte status = 0;
-            status = TransportStatus.setRequest(status);
+            status = transportservice.transport.TransportStatus.setRequest(status);
             if (compress && OutboundMessage.canCompress(message)) {
-                status = TransportStatus.setCompress(status);
+                status = transportservice.transport.TransportStatus.setCompress(status);
             }
             if (isHandshake) {
-                status = TransportStatus.setHandshake(status);
+                status = transportservice.transport.TransportStatus.setHandshake(status);
             }
 
             return status;
@@ -178,15 +178,15 @@ abstract class OutboundMessage extends NetworkMessage {
 
         private static byte setStatus(boolean compress, boolean isHandshake, Writeable message) {
             byte status = 0;
-            status = TransportStatus.setResponse(status);
+            status = transportservice.transport.TransportStatus.setResponse(status);
             if (message instanceof RemoteTransportException) {
-                status = TransportStatus.setError(status);
+                status = transportservice.transport.TransportStatus.setError(status);
             }
             if (compress) {
-                status = TransportStatus.setCompress(status);
+                status = transportservice.transport.TransportStatus.setCompress(status);
             }
             if (isHandshake) {
-                status = TransportStatus.setHandshake(status);
+                status = transportservice.transport.TransportStatus.setHandshake(status);
             }
 
             return status;

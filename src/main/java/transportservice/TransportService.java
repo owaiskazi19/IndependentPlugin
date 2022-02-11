@@ -40,18 +40,13 @@ public class TransportService extends AbstractLifecycleComponent
         transport.setMessageListener(this);
         connectionManager.addListener(this);
         transport.start();
-        if (transport.boundAddress() != null && logger.isInfoEnabled()) {
+        if (transport.boundAddress() != null) {
             logger.info("{}", transport.boundAddress());
             for (Map.Entry<String, BoundTransportAddress> entry : transport.profileBoundAddresses().entrySet()) {
                 logger.info("profile [{}]: {}", entry.getKey(), entry.getValue());
             }
         }
-//        localNode = localNodeFactory.apply(transport.boundAddress());
 
-//        if (remoteClusterClient) {
-//            // here we start to connect to the remote clusters
-//            remoteClusterService.initializeRemoteClusters();
-//        }
     }
 
     private ExecutorService getExecutorService() {

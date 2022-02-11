@@ -46,7 +46,7 @@ public class Netty extends TcpTransport {
     private final ByteSizeValue receivePredictorMax;
     private volatile Bootstrap clientBootstrap;
     private final Map<String, ServerBootstrap> serverBootstraps = newConcurrentMap();
-   // protected static Set<ProfileSettings> profileSettings = getProfileSettings(Settings.builder().put("transportservice.transport.profiles.test.port", "5555").put("transportservice.transport.profiles.default.port", "3333").build());
+    protected  Set<ProfileSettings> profileSettings;
     public static final Setting<ByteSizeValue> NETTY_RECEIVE_PREDICTOR_SIZE = Setting.byteSizeSetting(
             "transportservice.transport.netty.receive_predictor_size",
             new ByteSizeValue(64, ByteSizeUnit.KB),
@@ -84,7 +84,7 @@ public class Netty extends TcpTransport {
         Netty4Utils.setAvailableProcessors(OpenSearchExecutors.NODE_PROCESSORS_SETTING.get(settings));
         NettyAllocator.logAllocatorDescriptionIfNeeded();
         this.sharedGroupFactory = sharedGroupFactory;
-
+        this.profileSettings = getProfileSettings(Settings.builder().put("transport.profiles.test.port", "5555").put("transport.profiles.default.port", "3333").build());
         // See AdaptiveReceiveBufferSizePredictor#DEFAULT_XXX for default values in netty..., we can use higher ones for us, even fixed one
         this.receivePredictorMin = NETTY_RECEIVE_PREDICTOR_MIN.get(settings);
         this.receivePredictorMax = NETTY_RECEIVE_PREDICTOR_MAX.get(settings);
@@ -106,7 +106,7 @@ public class Netty extends TcpTransport {
             sharedGroup = sharedGroupFactory.getTransportGroup();
             clientBootstrap = createClientBootstrap(sharedGroup);
             if (NetworkService.NETWORK_SERVER.get(settings)) {
-                for (ProfileSettings profileSettings : profileSettings) {
+                for (ProfileSettings profileSettings : this.profileSettings) {
                     createServerBootstrap(profileSettings, sharedGroup);
                     bindServer(profileSettings);
                 }

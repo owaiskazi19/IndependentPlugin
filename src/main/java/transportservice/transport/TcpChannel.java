@@ -105,7 +105,7 @@ public interface TcpChannel extends CloseableChannel {
             lastAccessedTime = relativeMillisTime;
         }
 
-        long lastAccessedTime() {
+        public long lastAccessedTime() {
             return lastAccessedTime;
         }
     }

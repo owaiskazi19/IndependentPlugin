@@ -68,7 +68,7 @@ public final class OutboundHandler {
     private final BigArrays bigArrays;
     private volatile TransportMessageListener messageListener = TransportMessageListener.NOOP_LISTENER;
 
-    OutboundHandler(
+    public OutboundHandler(
             String nodeName,
             Version version,
             String[] features,
@@ -84,7 +84,7 @@ public final class OutboundHandler {
         this.bigArrays = bigArrays;
     }
 
-    void sendBytes(TcpChannel channel, BytesReference bytes, ActionListener<Void> listener) {
+    public void sendBytes(TcpChannel channel, BytesReference bytes, ActionListener<Void> listener) {
         SendContext sendContext = new SendContext(channel, () -> bytes, listener);
         try {
             internalSend(channel, sendContext);
@@ -110,7 +110,7 @@ public final class OutboundHandler {
             final boolean isHandshake
     ) throws IOException, TransportException {
         Version version = Version.min(this.version, channelVersion);
-        OutboundMessage.Request message = new OutboundMessage.Request(
+        OutboundMessage.Request message = new transportservice.transport.OutboundMessage.Request(
                 threadPool.getThreadContext(),
                 features,
                 request,

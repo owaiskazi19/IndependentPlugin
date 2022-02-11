@@ -24,12 +24,18 @@ import org.opensearch.common.transport.BoundTransportAddress;
 import org.opensearch.common.transport.PortsRange;
 import org.opensearch.common.transport.TransportAddress;
 import org.opensearch.common.unit.ByteSizeValue;
+import org.opensearch.common.util.BigArrays;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.common.util.concurrent.ConcurrentCollections;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.node.Node;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.*;
+import transportservice.transport.OutboundHandler;
+import transportservice.transport.InboundHandler;
+import transportservice.transport.TransportHandshaker;
+import transportservice.transport.TransportKeepAlive;
+
 
 import java.io.IOException;
 import java.io.StreamCorruptedException;
@@ -44,8 +50,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 
+import static java.util.Collections.unmodifiableMap;
 import static org.opensearch.common.transport.NetworkExceptionHelper.isCloseConnectionException;
 import static org.opensearch.common.transport.NetworkExceptionHelper.isConnectException;
 import static org.opensearch.common.util.concurrent.ConcurrentCollections.newConcurrentMap;
@@ -65,6 +71,13 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     private final ConcurrentMap<String, BoundTransportAddress> profileBoundAddresses = newConcurrentMap();
     private final Map<String, List<TcpServerChannel>> serverChannels = newConcurrentMap();
     private final Set<TcpChannel> acceptedChannels = ConcurrentCollections.newConcurrentSet();
+    private final OutboundHandler outboundHandler;
+    private final InboundHandler inboundHandler;
+    private final TransportKeepAlive keepAlive;
+    private final TransportHandshaker handshaker;
+    private final ResponseHandlers responseHandlers = new ResponseHandlers();
+    private final RequestHandlers requestHandlers = new RequestHandlers();
+
 
     private final ReadWriteLock closeLock = new ReentrantReadWriteLock();
     final StatsTracker statsTracker = new StatsTracker();
@@ -80,7 +93,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             NetworkService networkService
     ) {
         this.settings = settings;
-        this.profileSettings = getProfileSettings(Settings.builder().put("transportservice.transport.profiles.test.port", "5555").put("transportservice.transport.profiles.default.port", "3333").build());
+        this.profileSettings = getProfileSettings(Settings.builder().put("transport.profiles.test.port", "5555").put("transport.profiles.default.port", "3333").build());
         this.version = version;
         this.threadPool = threadPool;
         this.pageCacheRecycler = pageCacheRecycler;
@@ -88,6 +101,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         this.networkService = networkService;
         String nodeName = Node.NODE_NAME_SETTING.get(settings);
         final Settings defaultFeatures = TransportSettings.DEFAULT_FEATURES_SETTING.get(settings);
+
         String[] features;
         if (defaultFeatures == null) {
             features = new String[0];
@@ -100,6 +114,33 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             // use a sorted set to present the features in a consistent order
             features = new TreeSet<>(defaultFeatures.names()).toArray(new String[defaultFeatures.names().size()]);
         }
+        BigArrays bigArrays = new BigArrays(pageCacheRecycler, circuitBreakerService, CircuitBreaker.IN_FLIGHT_REQUESTS);
+        this.outboundHandler = new OutboundHandler(nodeName, version, features, statsTracker, threadPool, bigArrays);
+        this.handshaker = new TransportHandshaker(
+                version,
+                threadPool,
+                (node, channel, requestId, v) -> outboundHandler.sendRequest(
+                        node,
+                        channel,
+                        requestId,
+                        TransportHandshaker.HANDSHAKE_ACTION_NAME,
+                        new TransportHandshaker.HandshakeRequest(version),
+                        TransportRequestOptions.EMPTY,
+                        v,
+                        false,
+                        true
+                )
+        );
+        this.keepAlive = new TransportKeepAlive(threadPool, this.outboundHandler::sendBytes);
+        this.inboundHandler = new InboundHandler(
+                threadPool,
+                outboundHandler,
+                namedWriteableRegistry,
+                handshaker,
+                keepAlive,
+                requestHandlers,
+                responseHandlers
+        );
     }
 
 
@@ -120,17 +161,18 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
 
     @Override
     public void setMessageListener(TransportMessageListener transportMessageListener) {
-
+        outboundHandler.setMessageListener(transportMessageListener);
+        inboundHandler.setMessageListener(transportMessageListener);
     }
 
     @Override
     public BoundTransportAddress boundAddress() {
-        return null;
+        return this.boundAddress;
     }
 
     @Override
     public Map<String, BoundTransportAddress> profileBoundAddresses() {
-        return null;
+        return unmodifiableMap(new HashMap<>(profileBoundAddresses));
     }
 
     @Override
@@ -201,6 +243,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     }
 
     protected void bindServer(ProfileSettings profileSettings) {
+        System.out.println("INSIDE BIND SERVER");
         // Bind and start to accept incoming connections.
         InetAddress[] hostAddresses;
         List<String> profileBindHosts = profileSettings.bindHosts;
