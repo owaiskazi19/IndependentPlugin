@@ -11,7 +11,9 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.Version;
 import org.opensearch.cluster.node.DiscoveryNode;
+import org.opensearch.common.SuppressForbidden;
 import org.opensearch.common.io.stream.NamedWriteableRegistry;
+import org.opensearch.common.lease.Releasables;
 import org.opensearch.common.network.NetworkService;
 import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Settings;
@@ -118,6 +120,16 @@ public class Netty extends TcpTransport {
                 doStop();
             }
         }
+    }
+
+    @Override
+    @SuppressForbidden(reason = "debug")
+    protected void stopInternal() {
+        Releasables.close(() -> {
+            if (sharedGroup != null) {
+                sharedGroup.shutdown();
+            }
+        }, serverBootstraps::clear, () -> clientBootstrap = null);
     }
 
     protected ChannelHandler getServerChannelInitializer(String name) {

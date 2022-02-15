@@ -12,7 +12,6 @@ import org.opensearch.common.Booleans;
 import org.opensearch.common.Strings;
 import org.opensearch.common.breaker.CircuitBreaker;
 import org.opensearch.common.bytes.BytesArray;
-import org.opensearch.common.component.AbstractLifecycleComponent;
 import org.opensearch.common.component.Lifecycle;
 import org.opensearch.common.io.stream.NamedWriteableRegistry;
 import org.opensearch.common.network.CloseableChannel;
@@ -31,11 +30,11 @@ import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.node.Node;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.*;
-import transportservice.transport.OutboundHandler;
+import transportservice.component.AbstractLifecycleComponent;
 import transportservice.transport.InboundHandler;
+import transportservice.transport.OutboundHandler;
 import transportservice.transport.TransportHandshaker;
 import transportservice.transport.TransportKeepAlive;
-
 
 import java.io.IOException;
 import java.io.StreamCorruptedException;
@@ -47,6 +46,8 @@ import java.nio.channels.CancelledKeyException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -149,9 +150,48 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
 
     }
 
+    protected abstract void stopInternal();
+
     @Override
     protected void doStop() {
+        final CountDownLatch latch = new CountDownLatch(1);
+        // make sure we run it on another thread than a possible IO handler thread
+        assert threadPool.generic().isShutdown() == false : "Must stop transport before terminating underlying threadpool";
+        threadPool.generic().execute(() -> {
+            closeLock.writeLock().lock();
+            try {
+                keepAlive.close();
 
+                // first stop to accept any incoming connections so nobody can connect to this transport
+                for (Map.Entry<String, List<TcpServerChannel>> entry : serverChannels.entrySet()) {
+                    String profile = entry.getKey();
+                    List<TcpServerChannel> channels = entry.getValue();
+                    ActionListener<Void> closeFailLogger = ActionListener.wrap(
+                            c -> {},
+                            e -> logger.warn(() -> new ParameterizedMessage("Error closing serverChannel for profile [{}]", profile), e)
+                    );
+                    channels.forEach(c -> c.addCloseListener(closeFailLogger));
+                    CloseableChannel.closeChannels(channels, true);
+                }
+                serverChannels.clear();
+
+                // close all of the incoming channels. The closeChannels method takes a list so we must convert the set.
+                CloseableChannel.closeChannels(new ArrayList<>(acceptedChannels), true);
+                acceptedChannels.clear();
+
+                stopInternal();
+            } finally {
+                closeLock.writeLock().unlock();
+                latch.countDown();
+            }
+        });
+
+        try {
+            latch.await(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            // ignore
+        }
     }
 
     @Override

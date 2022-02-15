@@ -49,7 +49,6 @@ import org.opensearch.threadpool.ThreadPool;
 
 
 import org.opensearch.transport.*;
-import transportservice.transport.TcpChannel;
 
 import java.io.EOFException;
 import java.io.IOException;
