@@ -314,7 +314,7 @@ public class Netty extends TcpTransport {
             addClosedExceptionLogger(ch);
             assert ch instanceof Netty4NioSocketChannel;
             NetUtils.tryEnsureReasonableKeepAliveConfig(((Netty4NioSocketChannel) ch).javaChannel());
-            transportservice.netty4.Netty4TcpChannel nettyTcpChannel = new transportservice.netty4.Netty4TcpChannel(ch, true, name, ch.newSucceededFuture());
+            Netty4TcpChannel nettyTcpChannel = new Netty4TcpChannel(ch, true, name, ch.newSucceededFuture());
             ch.attr(CHANNEL_KEY).set(nettyTcpChannel);
             ch.pipeline().addLast("byte_buf_sizer", sizer);
             ch.pipeline().addLast("logging", new transportservice.netty4.OpenSearchLoggingHandler());

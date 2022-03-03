@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class TransportKeepAlive implements Closeable {
 
-    static final int PING_DATA_SIZE = -1;
+    public static final int PING_DATA_SIZE = -1;
 
     private static final BytesReference PING_MESSAGE;
 
@@ -91,7 +91,7 @@ public final class TransportKeepAlive implements Closeable {
         this.lifecycle.moveToStarted();
     }
 
-    void registerNodeConnection(List<transportservice.transport.TcpChannel> nodeChannels, ConnectionProfile connectionProfile) {
+    public void registerNodeConnection(List<transportservice.transport.TcpChannel> nodeChannels, ConnectionProfile connectionProfile) {
         TimeValue pingInterval = connectionProfile.getPingInterval();
         if (pingInterval.millis() < 0) {
             return;

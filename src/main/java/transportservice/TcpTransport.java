@@ -5,6 +5,7 @@ import com.carrotsearch.hppc.IntSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.opensearch.OpenSearchException;
 import org.opensearch.Version;
 import org.opensearch.action.ActionListener;
 import org.opensearch.cluster.node.DiscoveryNode;
@@ -12,8 +13,11 @@ import org.opensearch.common.Booleans;
 import org.opensearch.common.Strings;
 import org.opensearch.common.breaker.CircuitBreaker;
 import org.opensearch.common.bytes.BytesArray;
+import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.component.Lifecycle;
 import org.opensearch.common.io.stream.NamedWriteableRegistry;
+import org.opensearch.common.io.stream.StreamInput;
+import org.opensearch.common.metrics.MeanMetric;
 import org.opensearch.common.network.CloseableChannel;
 import org.opensearch.common.network.NetworkAddress;
 import org.opensearch.common.network.NetworkService;
@@ -27,7 +31,9 @@ import org.opensearch.common.util.BigArrays;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.common.util.concurrent.ConcurrentCollections;
 import org.opensearch.indices.breaker.CircuitBreakerService;
+import org.opensearch.monitor.jvm.JvmInfo;
 import org.opensearch.node.Node;
+import org.opensearch.rest.RestStatus;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.*;
 import transportservice.component.AbstractLifecycleComponent;
@@ -48,9 +54,13 @@ import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
+import transportservice.transport.TcpChannel;
+import transportservice.transport.InboundMessage;
 
 import static java.util.Collections.unmodifiableMap;
 import static org.opensearch.common.transport.NetworkExceptionHelper.isCloseConnectionException;
@@ -60,6 +70,9 @@ import static org.opensearch.common.util.concurrent.ConcurrentCollections.newCon
 public abstract class TcpTransport extends AbstractLifecycleComponent implements Transport {
 
     private static final Logger logger = LogManager.getLogger(TcpTransport.class);
+    // This is the number of bytes necessary to read the message size
+    private static final int BYTES_NEEDED_FOR_MESSAGE_SIZE = TcpHeader.MARKER_BYTES_SIZE + TcpHeader.MESSAGE_LENGTH_SIZE;
+    private static final long THIRTY_PER_HEAP_SIZE = (long) (JvmInfo.jvmInfo().getMem().getHeapMax().getBytes() * 0.3);
     protected final Settings settings;
     private final Version version;
     protected final ThreadPool threadPool;
@@ -82,6 +95,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
 
     private final ReadWriteLock closeLock = new ReentrantReadWriteLock();
     final StatsTracker statsTracker = new StatsTracker();
+    private final AtomicLong outboundConnectionCount = new AtomicLong(); // also used as a correlation ID for open/close logs
 
 
     public TcpTransport(
@@ -145,12 +159,153 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     }
 
 
+    public StatsTracker getStatsTracker() {
+        return statsTracker;
+    }
+
+    public Supplier<CircuitBreaker> getInflightBreaker() {
+        return () -> circuitBreakerService.getBreaker(CircuitBreaker.IN_FLIGHT_REQUESTS);
+    }
+
     @Override
     protected void doStart() {
 
     }
 
     protected abstract void stopInternal();
+
+    public void inboundMessage(TcpChannel channel, InboundMessage message) {
+        try {
+            inboundHandler.inboundMessage(channel, message);
+        } catch (Exception e) {
+            onException(channel, e);
+        }
+    }
+
+    /**
+     * Validates the first 6 bytes of the message header and returns the length of the message. If 6 bytes
+     * are not available, it returns -1.
+     *
+     * @param networkBytes the will be read
+     * @return the length of the message
+     * @throws StreamCorruptedException              if the message header format is not recognized
+     * @throws org.opensearch.transport.TcpTransport.HttpRequestOnTransportException       if the message header appears to be an HTTP message
+     * @throws IllegalArgumentException              if the message length is greater that the maximum allowed frame size.
+     *                                               This is dependent on the available memory.
+     */
+
+    public static int readMessageLength(BytesReference networkBytes) throws IOException {
+        if (networkBytes.length() < BYTES_NEEDED_FOR_MESSAGE_SIZE) {
+            return -1;
+        } else {
+            return readHeaderBuffer(networkBytes);
+        }
+    }
+
+    private static int readHeaderBuffer(BytesReference headerBuffer) throws IOException {
+        if (headerBuffer.get(0) != 'E' || headerBuffer.get(1) != 'S') {
+            if (appearsToBeHTTPRequest(headerBuffer)) {
+                throw new TcpTransport.HttpRequestOnTransportException("This is not an HTTP port");
+            }
+
+            if (appearsToBeHTTPResponse(headerBuffer)) {
+                throw new StreamCorruptedException(
+                        "received HTTP response on transport port, ensure that transport port (not "
+                                + "HTTP port) of a remote node is specified in the configuration"
+                );
+            }
+
+            String firstBytes = "("
+                    + Integer.toHexString(headerBuffer.get(0) & 0xFF)
+                    + ","
+                    + Integer.toHexString(headerBuffer.get(1) & 0xFF)
+                    + ","
+                    + Integer.toHexString(headerBuffer.get(2) & 0xFF)
+                    + ","
+                    + Integer.toHexString(headerBuffer.get(3) & 0xFF)
+                    + ")";
+
+            if (appearsToBeTLS(headerBuffer)) {
+                throw new StreamCorruptedException("SSL/TLS request received but SSL/TLS is not enabled on this node, got " + firstBytes);
+            }
+
+            throw new StreamCorruptedException("invalid internal transport message format, got " + firstBytes);
+        }
+        final int messageLength = headerBuffer.getInt(TcpHeader.MARKER_BYTES_SIZE);
+
+        if (messageLength == TransportKeepAlive.PING_DATA_SIZE) {
+            // This is a ping
+            return 0;
+        }
+
+        if (messageLength <= 0) {
+            throw new StreamCorruptedException("invalid data length: " + messageLength);
+        }
+
+        if (messageLength > THIRTY_PER_HEAP_SIZE) {
+            throw new IllegalArgumentException(
+                    "transport content length received ["
+                            + new ByteSizeValue(messageLength)
+                            + "] exceeded ["
+                            + new ByteSizeValue(THIRTY_PER_HEAP_SIZE)
+                            + "]"
+            );
+        }
+
+        return messageLength;
+    }
+
+    private static boolean appearsToBeHTTPRequest(BytesReference headerBuffer) {
+        return bufferStartsWith(headerBuffer, "GET")
+                || bufferStartsWith(headerBuffer, "POST")
+                || bufferStartsWith(headerBuffer, "PUT")
+                || bufferStartsWith(headerBuffer, "HEAD")
+                || bufferStartsWith(headerBuffer, "DELETE")
+                // Actually 'OPTIONS'. But we are only guaranteed to have read six bytes at this point.
+                || bufferStartsWith(headerBuffer, "OPTION")
+                || bufferStartsWith(headerBuffer, "PATCH")
+                || bufferStartsWith(headerBuffer, "TRACE");
+    }
+
+    private static boolean appearsToBeHTTPResponse(BytesReference headerBuffer) {
+        return bufferStartsWith(headerBuffer, "HTTP");
+    }
+
+    private static boolean appearsToBeTLS(BytesReference headerBuffer) {
+        return headerBuffer.get(0) == 0x16 && headerBuffer.get(1) == 0x03;
+    }
+
+    private static boolean bufferStartsWith(BytesReference buffer, String method) {
+        char[] chars = method.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            if (buffer.get(i) != chars[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * A helper exception to mark an incoming connection as potentially being HTTP
+     * so an appropriate error code can be returned
+     */
+    public static class HttpRequestOnTransportException extends OpenSearchException {
+
+        HttpRequestOnTransportException(String msg) {
+            super(msg);
+        }
+
+        @Override
+        public RestStatus status() {
+            return RestStatus.BAD_REQUEST;
+        }
+
+        public HttpRequestOnTransportException(StreamInput in) throws IOException {
+            super(in);
+        }
+    }
+
+
 
     @Override
     protected void doStop() {
@@ -232,17 +387,29 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
 
     @Override
     public TransportStats getStats() {
-        return null;
+        final MeanMetric writeBytesMetric = statsTracker.getWriteBytes();
+        final long bytesWritten = statsTracker.getBytesWritten();
+        final long messagesSent = statsTracker.getMessagesSent();
+        final long messagesReceived = statsTracker.getMessagesReceived();
+        final long bytesRead = statsTracker.getBytesRead();
+        return new TransportStats(
+                acceptedChannels.size(),
+                outboundConnectionCount.get(),
+                messagesReceived,
+                bytesRead,
+                messagesSent,
+                bytesWritten
+        );
     }
 
     @Override
     public ResponseHandlers getResponseHandlers() {
-        return null;
+        return responseHandlers;
     }
 
     @Override
     public RequestHandlers getRequestHandlers() {
-        return null;
+        return requestHandlers;
     }
 
     private InetSocketAddress bindToPort(final String name, final InetAddress hostAddress, String port) {
@@ -497,7 +664,6 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             CloseableChannel.closeChannel(channel);
         }
     }
-
 
 
     /**

@@ -73,7 +73,7 @@ public final class TransportHandshaker {
         this.handshakeRequestSender = handshakeRequestSender;
     }
 
-    void sendHandshake(long requestId, DiscoveryNode node, transportservice.transport.TcpChannel channel, TimeValue timeout, ActionListener<Version> listener) {
+    public void sendHandshake(long requestId, DiscoveryNode node, transportservice.transport.TcpChannel channel, TimeValue timeout, ActionListener<Version> listener) {
         numHandshakes.inc();
         final HandshakeResponseHandler handler = new HandshakeResponseHandler(requestId, version, listener);
         pendingHandshakes.put(requestId, handler);

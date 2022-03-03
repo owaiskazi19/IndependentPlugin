@@ -37,10 +37,12 @@ import io.netty.channel.*;
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.OpenSearchException;
 import org.opensearch.common.bytes.BytesReference;
+import org.opensearch.common.bytes.ReleasableBytesReference;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.Transport;
 import org.opensearch.transport.Transports;
+import transportservice.transport.InboundPipeline;
 
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayDeque;
@@ -57,12 +59,22 @@ final class Netty4MessageChannelHandler extends ChannelDuplexHandler {
     private final Queue<WriteOperation> queuedWrites = new ArrayDeque<>();
 
     private WriteOperation currentWrite;
+    private final InboundPipeline pipeline;
 
 
     Netty4MessageChannelHandler(PageCacheRecycler recycler, Netty transport) {
         this.transport = transport;
         final ThreadPool threadPool = transport.getThreadPool();
         final Transport.RequestHandlers requestHandlers = transport.getRequestHandlers();
+        this.pipeline = new InboundPipeline(
+                transport.getVersion(),
+                transport.getStatsTracker(),
+                recycler,
+                threadPool::relativeTimeInMillis,
+                transport.getInflightBreaker(),
+                requestHandlers::getHandler,
+                transport::inboundMessage
+        );
     }
 
     @Override
@@ -72,11 +84,12 @@ final class Netty4MessageChannelHandler extends ChannelDuplexHandler {
         assert msg instanceof ByteBuf : "Expected message type ByteBuf, found: " + msg.getClass();
 
         final ByteBuf buffer = (ByteBuf) msg;
-        transportservice.netty4.Netty4TcpChannel channel = ctx.channel().attr(Netty.CHANNEL_KEY).get();
-        final BytesReference wrapped = transportservice.netty4.Netty4Utils.toBytesReference(buffer);
-//        try (ReleasableBytesReference reference = new ReleasableBytesReference(wrapped, buffer::release)) {
-//            pipeline.handleBytes(channel, reference);
-//        }
+        Netty4TcpChannel channel = ctx.channel().attr(Netty.CHANNEL_KEY).get();
+        final BytesReference wrapped = Netty4Utils.toBytesReference(buffer);
+        System.out.println("MESSAGE RECEIVED:" + wrapped.utf8ToString());
+        try (ReleasableBytesReference reference = new ReleasableBytesReference(wrapped, buffer::release)) {
+            pipeline.handleBytes(channel, reference);
+        }
     }
 
     @Override
@@ -85,7 +98,7 @@ final class Netty4MessageChannelHandler extends ChannelDuplexHandler {
         ExceptionsHelper.maybeDieOnAnotherThread(cause);
         final Throwable unwrapped = ExceptionsHelper.unwrap(cause, OpenSearchException.class);
         final Throwable newCause = unwrapped != null ? unwrapped : cause;
-        transportservice.netty4.Netty4TcpChannel tcpChannel = ctx.channel().attr(Netty.CHANNEL_KEY).get();
+        Netty4TcpChannel tcpChannel = ctx.channel().attr(Netty.CHANNEL_KEY).get();
         if (newCause instanceof Error) {
             transport.onException(tcpChannel, new Exception(newCause));
         } else {

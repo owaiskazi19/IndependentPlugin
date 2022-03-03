@@ -85,7 +85,7 @@ public class RunPlugin {
                 threadPool,
                 localNodeFactory,
                 NOOP_TRANSPORT_INTERCEPTOR
-                );
+        );
 
 //        connectionManager.addListener(transportService);
 
@@ -129,7 +129,7 @@ public class RunPlugin {
                     TransportRequestOptions.Type.STATE
             );
             builder.setHandshakeTimeout(TimeValue.timeValueHours(1));
-            transportService.connectToNode(dummy, builder.build());
+            //transportService.connectToNode(dummy, builder.build());
             t.join();
 
         } catch (IOException e) {

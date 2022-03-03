@@ -97,11 +97,11 @@ public class InboundHandler {
         }
     }
 
-    void setSlowLogThreshold(TimeValue slowLogThreshold) {
+    public void setSlowLogThreshold(TimeValue slowLogThreshold) {
         this.slowLogThresholdMs = slowLogThreshold.getMillis();
     }
 
-    void inboundMessage(TcpChannel channel, InboundMessage message) throws Exception {
+    public void inboundMessage(TcpChannel channel, InboundMessage message) throws Exception {
         final long startTime = threadPool.relativeTimeInMillis();
         channel.getChannelStats().markAccessed(startTime);
         TransportLogger.logInboundMessage(channel, message);
