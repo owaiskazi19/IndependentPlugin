@@ -40,9 +40,9 @@ import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.bytes.ReleasableBytesReference;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.threadpool.ThreadPool;
-import org.opensearch.transport.Transport;
 import org.opensearch.transport.Transports;
 import transportservice.transport.InboundPipeline;
+import transportservice.transport.Transport;
 
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayDeque;

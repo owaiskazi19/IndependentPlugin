@@ -161,6 +161,7 @@ public class InboundDecoder implements Releasable {
     }
 
     private int headerBytesToRead(BytesReference reference) {
+        System.out.println("REFERENCE LENGTH " + reference.length() + " " + reference.utf8ToString());
         if (reference.length() < TcpHeader.BYTES_REQUIRED_FOR_VERSION) {
             return 0;
         }
@@ -173,6 +174,7 @@ public class InboundDecoder implements Releasable {
             return fixedHeaderSize;
         } else {
             int variableHeaderSize = reference.getInt(TcpHeader.VARIABLE_HEADER_SIZE_POSITION);
+            System.out.println("VARIABLE SIZE " + variableHeaderSize);
             int totalHeaderSize = fixedHeaderSize + variableHeaderSize;
             if (totalHeaderSize > reference.length()) {
                 return 0;

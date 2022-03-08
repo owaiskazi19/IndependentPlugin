@@ -37,8 +37,10 @@ import org.opensearch.rest.RestStatus;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.*;
 import transportservice.component.AbstractLifecycleComponent;
+import transportservice.transport.ConnectionProfile;
 import transportservice.transport.InboundHandler;
 import transportservice.transport.OutboundHandler;
+import transportservice.transport.Transport;
 import transportservice.transport.TransportHandshaker;
 import transportservice.transport.TransportKeepAlive;
 
@@ -61,6 +63,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import transportservice.transport.TcpChannel;
 import transportservice.transport.InboundMessage;
+import transportservice.transport.Transport.ResponseHandlers;
+
 
 import static java.util.Collections.unmodifiableMap;
 import static org.opensearch.common.transport.NetworkExceptionHelper.isCloseConnectionException;
@@ -89,8 +93,8 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     private final InboundHandler inboundHandler;
     private final TransportKeepAlive keepAlive;
     private final TransportHandshaker handshaker;
-    private final ResponseHandlers responseHandlers = new ResponseHandlers();
-    private final RequestHandlers requestHandlers = new RequestHandlers();
+    private final transportservice.transport.Transport.ResponseHandlers responseHandlers = new transportservice.transport.Transport.ResponseHandlers();
+    private final transportservice.transport.Transport.RequestHandlers requestHandlers = new transportservice.transport.Transport.RequestHandlers();
 
 
     private final ReadWriteLock closeLock = new ReentrantReadWriteLock();
@@ -181,6 +185,14 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
             onException(channel, e);
         }
     }
+
+    public final long getNumHandshakes() {
+        return handshaker.getNumHandshakes();
+    }
+    public final TransportKeepAlive getKeepAlive() {
+        return keepAlive;
+    }
+
 
     /**
      * Validates the first 6 bytes of the message header and returns the length of the message. If 6 bytes
@@ -355,7 +367,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     }
 
     @Override
-    public void setMessageListener(TransportMessageListener transportMessageListener) {
+    public void setMessageListener(transportservice.transport.TransportMessageListener transportMessageListener) {
         outboundHandler.setMessageListener(transportMessageListener);
         inboundHandler.setMessageListener(transportMessageListener);
     }
@@ -381,7 +393,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     }
 
     @Override
-    public void openConnection(DiscoveryNode discoveryNode, ConnectionProfile connectionProfile, ActionListener<Connection> actionListener) {
+    public void openConnection(DiscoveryNode discoveryNode, ConnectionProfile connectionProfile, transportservice.action.ActionListener<Connection> actionListener) {
 
     }
 

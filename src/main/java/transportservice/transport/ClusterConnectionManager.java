@@ -22,12 +22,13 @@ package transportservice.transport;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.opensearch.action.ActionListener;
 import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.concurrent.*;
 import org.opensearch.core.internal.io.IOUtils;
 import org.opensearch.transport.*;
+import transportservice.common.ListenableFuture;
+import transportservice.action.ActionListener;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -89,7 +90,7 @@ public class ClusterConnectionManager implements ConnectionManager {
     }
 
     @Override
-    public void openConnection(DiscoveryNode node, ConnectionProfile connectionProfile, ActionListener<Transport.Connection> listener) {
+    public void openConnection(DiscoveryNode node, ConnectionProfile connectionProfile, transportservice.action.ActionListener<Transport.Connection> listener) {
         ConnectionProfile resolvedProfile = ConnectionProfile.resolveConnectionProfile(connectionProfile, defaultProfile);
         internalOpenConnection(node, resolvedProfile, listener);
     }
@@ -104,7 +105,7 @@ public class ClusterConnectionManager implements ConnectionManager {
             DiscoveryNode node,
             ConnectionProfile connectionProfile,
             ConnectionValidator connectionValidator,
-            ActionListener<Void> listener
+            transportservice.action.ActionListener<Void> listener
     ) throws ConnectTransportException {
         ConnectionProfile resolvedProfile = ConnectionProfile.resolveConnectionProfile(connectionProfile, defaultProfile);
         if (node == null) {
@@ -138,8 +139,8 @@ public class ClusterConnectionManager implements ConnectionManager {
         currentListener.addListener(listener, OpenSearchExecutors.newDirectExecutorService());
 
         final RunOnce releaseOnce = new RunOnce(connectingRefCounter::decRef);
-        internalOpenConnection(node, resolvedProfile, ActionListener.wrap(conn -> {
-            connectionValidator.validate(conn, resolvedProfile, ActionListener.wrap(ignored -> {
+        internalOpenConnection(node, resolvedProfile, transportservice.action.ActionListener.wrap(conn -> {
+            connectionValidator.validate(conn, resolvedProfile, transportservice.action.ActionListener.wrap(ignored -> {
                 assert Transports.assertNotTransportThread("connection validator success");
                 try {
                     if (connectedNodes.putIfAbsent(node, conn) != null) {
@@ -151,7 +152,7 @@ public class ClusterConnectionManager implements ConnectionManager {
                             connectionListener.onNodeConnected(node, conn);
                         } finally {
                             final Transport.Connection finalConnection = conn;
-                            conn.addCloseListener(ActionListener.wrap(() -> {
+                            conn.addCloseListener(transportservice.action.ActionListener.wrap(() -> {
                                 logger.trace("unregistering {} after connection close and marking as disconnected", node);
                                 connectedNodes.remove(node, finalConnection);
                                 connectionListener.onNodeDisconnected(node, conn);
@@ -253,14 +254,14 @@ public class ClusterConnectionManager implements ConnectionManager {
     private void internalOpenConnection(
             DiscoveryNode node,
             ConnectionProfile connectionProfile,
-            ActionListener<Transport.Connection> listener
+            transportservice.action.ActionListener<Transport.Connection> listener
     ) {
-        transport.openConnection(node, connectionProfile, ActionListener.map(listener, connection -> {
+        transport.openConnection(node, connectionProfile, transportservice.action.ActionListener.map(listener, connection -> {
             assert Transports.assertNotTransportThread("internalOpenConnection success");
             try {
                 connectionListener.onConnectionOpened(connection);
             } finally {
-                connection.addCloseListener(ActionListener.wrap(() -> connectionListener.onConnectionClosed(connection)));
+                connection.addCloseListener(transportservice.action.ActionListener.wrap(() -> connectionListener.onConnectionClosed(connection)));
             }
             if (connection.isClosed()) {
                 throw new ConnectTransportException(node, "a channel closed while connecting");

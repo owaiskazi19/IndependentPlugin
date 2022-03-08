@@ -20,6 +20,7 @@ import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.*;
 import transportservice.netty4.Netty;
 import transportservice.transport.ClusterConnectionManager;
+import transportservice.transport.ConnectionManager;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -90,6 +91,7 @@ public class RunPlugin {
 //        connectionManager.addListener(transportService);
 
         transportService.start();
+        transportService.acceptIncomingRequests();
 
 
         // Test Test Test

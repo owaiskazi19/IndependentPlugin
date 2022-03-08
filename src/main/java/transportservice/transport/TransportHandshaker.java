@@ -152,7 +152,7 @@ public final class TransportHandshaker {
         return pendingHandshakes.size();
     }
 
-    long getNumHandshakes() {
+    public long getNumHandshakes() {
         return numHandshakes.count();
     }
 

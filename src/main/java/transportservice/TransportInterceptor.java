@@ -72,7 +72,7 @@ public interface TransportInterceptor {
      */
     interface AsyncSender {
         <T extends TransportResponse> void sendRequest(
-            Transport.Connection connection,
+            transportservice.transport.Transport.Connection connection,
             String action,
             TransportRequest request,
             TransportRequestOptions options,
