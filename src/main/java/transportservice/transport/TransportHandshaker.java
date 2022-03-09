@@ -148,7 +148,7 @@ public final class TransportHandshaker {
         return pendingHandshakes.remove(requestId);
     }
 
-    int getNumPendingHandshakes() {
+    public int getNumPendingHandshakes() {
         return pendingHandshakes.size();
     }
 

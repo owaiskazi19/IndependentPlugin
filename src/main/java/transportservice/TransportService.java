@@ -72,6 +72,9 @@ public class TransportService extends AbstractLifecycleComponent
             }
     );
 
+    public static final TransportInterceptor NOOP_TRANSPORT_INTERCEPTOR = new TransportInterceptor() {
+    };
+
     private final Transport.Connection localNodeConnection = new Transport.Connection() {
         @Override
         public DiscoveryNode getNode() {

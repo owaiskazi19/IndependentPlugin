@@ -1,4 +1,8 @@
+import org.hamcrest.MatcherAssert;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.jupiter.api.Test;
+import org.junit.runner.RunWith;
 import org.opensearch.Version;
 import org.opensearch.cluster.coordination.DeterministicTaskQueue;
 import org.opensearch.cluster.coordination.FollowersChecker;
@@ -13,6 +17,7 @@ import org.opensearch.test.transport.MockTransport;
 import org.opensearch.transport.TransportRequest;
 import org.opensearch.transport.TransportResponse;
 import org.opensearch.transport.TransportService;
+import com.carrotsearch.randomizedtesting.RandomizedRunner;
 
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -24,22 +29,35 @@ import static org.opensearch.cluster.coordination.FollowersChecker.*;
 import static org.opensearch.monitor.StatusInfo.Status.HEALTHY;
 import static org.opensearch.node.Node.NODE_NAME_SETTING;
 
+@RunWith(RandomizedRunner.class)
 public class TestTransportRequest extends OpenSearchTestCase {
+    @Before
+    public void setupNew() throws Exception {
+        System.out.println("hello");
+    }
+
+    @After
+    public void setupNewAfter() throws Exception {
+        System.out.println("hello");
+    }
+
 
     private static Settings randomSettings() {
         final Settings.Builder settingsBuilder = Settings.builder();
         if (randomBoolean()) {
             settingsBuilder.put(FOLLOWER_CHECK_RETRY_COUNT_SETTING.getKey(), randomIntBetween(1, 10));
         }
-        if (randomBoolean()) {
+        if (random().nextBoolean()) {
             settingsBuilder.put(FOLLOWER_CHECK_INTERVAL_SETTING.getKey(), randomIntBetween(100, 100000) + "ms");
         }
-        if (randomBoolean()) {
+        if (random().nextBoolean()) {
             settingsBuilder.put(FOLLOWER_CHECK_TIMEOUT_SETTING.getKey(), randomIntBetween(1, 100000) + "ms");
         }
         return settingsBuilder.build();
     }
 
+    // Need to add @Test for all the test
+    //@Test
     public void testFailsNodeThatIsUnhealthy() {
         testTransportRequest(
                 randomSettings(),
@@ -50,7 +68,7 @@ public class TestTransportRequest extends OpenSearchTestCase {
         );
     }
 
-    @Test
+
     private void testTransportRequest(
             Settings testSettings,
             Supplier<TransportResponse.Empty> responder,
@@ -113,7 +131,7 @@ public class TestTransportRequest extends OpenSearchTestCase {
                 fcr -> { assert false : fcr; },
                 (node, reason) -> {
                     assertTrue(nodeFailed.compareAndSet(false, true));
-                    assertThat(reason, equalTo(failureReason));
+                    MatcherAssert.assertThat(reason, equalTo(failureReason));
                 },
                 nodeHealthService
         );
@@ -126,7 +144,7 @@ public class TestTransportRequest extends OpenSearchTestCase {
             }
             deterministicTaskQueue.runAllRunnableTasks();
         }
-        assertThat(deterministicTaskQueue.getCurrentTimeMillis(), equalTo(expectedFailureTime));
+        MatcherAssert.assertThat(deterministicTaskQueue.getCurrentTimeMillis(), equalTo(expectedFailureTime));
 
     }
 

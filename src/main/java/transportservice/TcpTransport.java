@@ -162,6 +162,9 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         );
     }
 
+    public final int getNumPendingHandshakes() {
+        return this.handshaker.getNumPendingHandshakes();
+    }
 
     public StatsTracker getStatsTracker() {
         return statsTracker;
