@@ -4,17 +4,22 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.util.SetOnce;
 import org.opensearch.Version;
+import org.opensearch.cluster.ClusterModule;
 import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.common.SuppressForbidden;
 import org.opensearch.common.io.stream.NamedWriteableRegistry;
+import org.opensearch.common.network.NetworkModule;
 import org.opensearch.common.network.NetworkService;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.transport.BoundTransportAddress;
 import org.opensearch.common.transport.TransportAddress;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.PageCacheRecycler;
+import org.opensearch.indices.IndicesModule;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.indices.breaker.NoneCircuitBreakerService;
+import org.opensearch.plugins.MapperPlugin;
+import org.opensearch.plugins.Plugin;
 import org.opensearch.search.SearchModule;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.*;
@@ -26,7 +31,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.*;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
@@ -39,16 +47,11 @@ public class RunPlugin {
             .put(TransportSettings.PORT.getKey(), "0")
             .build();
     private static final Logger logger = LogManager.getLogger(RunPlugin.class);
-    private static LocalNodeFactory localNodeFactory = null;
     public static final TransportInterceptor NOOP_TRANSPORT_INTERCEPTOR = new TransportInterceptor() {
     };
     private static final Version CURRENT_VERSION = Version.fromString(String.valueOf(Version.CURRENT.major) + ".0.0");
     protected static final Version version0 = CURRENT_VERSION.minimumCompatibilityVersion();
 
-    public RunPlugin(LocalNodeFactory localNodeFactory) {
-        // DUMMY VALUE
-        this.localNodeFactory =  new LocalNodeFactory(settings, "5");
-    }
 
     @SuppressForbidden(reason = "need local ephemeral port")
     protected static InetSocketAddress getLocalEphemeral() throws UnknownHostException {
@@ -56,11 +59,19 @@ public class RunPlugin {
     }
 
     public static void main(String[] args) {
-
-        ThreadPool threadPool = new TestThreadPool("test");
+        ThreadPool threadPool = new ThreadPool(settings);
         NetworkService networkService = new NetworkService(Collections.emptyList());
         PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
-        NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(new SearchModule(Settings.EMPTY, Collections.emptyList()).getNamedWriteables());
+        IndicesModule indicesModule = new IndicesModule(Collections.emptyList());
+        SearchModule searchModule = new SearchModule(settings, Collections.emptyList());
+        List<NamedWriteableRegistry.Entry> namedWriteables = Stream.of(
+                NetworkModule.getNamedWriteables().stream(),
+                indicesModule.getNamedWriteables().stream(),
+                searchModule.getNamedWriteables().stream(),
+                null,
+                ClusterModule.getNamedWriteables().stream()
+        ).flatMap(Function.identity()).collect(Collectors.toList());
+        final NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(namedWriteables);
         final CircuitBreakerService circuitBreakerService = new NoneCircuitBreakerService();
 
 
@@ -84,7 +95,6 @@ public class RunPlugin {
                 connectionManager,
                 transport.getResponseHandlers(),
                 threadPool,
-                localNodeFactory,
                 NOOP_TRANSPORT_INTERCEPTOR
         );
 
@@ -136,28 +146,6 @@ public class RunPlugin {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }
-    }
-
-    private static class LocalNodeFactory implements Function<BoundTransportAddress, DiscoveryNode> {
-        private final SetOnce<DiscoveryNode> localNode = new SetOnce<>();
-        private final String persistentNodeId;
-        private final Settings settings;
-
-        private LocalNodeFactory(Settings settings, String persistentNodeId) {
-            this.persistentNodeId = persistentNodeId;
-            this.settings = settings;
-        }
-
-        @Override
-        public DiscoveryNode apply(BoundTransportAddress boundTransportAddress) {
-            localNode.set(DiscoveryNode.createLocal(settings, boundTransportAddress.publishAddress(), persistentNodeId));
-            return localNode.get();
-        }
-
-        DiscoveryNode getNode() {
-            assert localNode.get() != null;
-            return localNode.get();
         }
     }
 

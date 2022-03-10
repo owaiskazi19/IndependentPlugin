@@ -37,7 +37,6 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -52,7 +51,6 @@ public class TransportService extends AbstractLifecycleComponent
     private static final Logger logger = LogManager.getLogger(TransportService.class);
     private final Transport.ResponseHandlers responseHandlers;
     protected final ThreadPool threadPool;
-    private final Function<BoundTransportAddress, DiscoveryNode> localNodeFactory;
     private final DelegatingTransportMessageListener messageListener = new DelegatingTransportMessageListener();
     volatile DiscoveryNode localNode = null;
     public static final String HANDSHAKE_ACTION_NAME = "internal:transport/handshake";
@@ -100,12 +98,11 @@ public class TransportService extends AbstractLifecycleComponent
     };
 
 
-    public TransportService(Transport transport, ConnectionManager connectionManager, Transport.ResponseHandlers responseHandlers, ThreadPool threadPool, Function<BoundTransportAddress, DiscoveryNode> localNodeFactory, TransportInterceptor transportInterceptor) {
+    public TransportService(Transport transport, ConnectionManager connectionManager, Transport.ResponseHandlers responseHandlers, ThreadPool threadPool, TransportInterceptor transportInterceptor) {
         this.transport = transport;
         this.connectionManager = connectionManager;
         this.responseHandlers = responseHandlers;
         this.threadPool = threadPool;
-        this.localNodeFactory = localNodeFactory;
         this.interceptor = transportInterceptor;
         this.asyncSender = interceptor.interceptSender(this::sendRequestInternal);
         tracerLog = Loggers.getLogger(logger, ".tracer");
