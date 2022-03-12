@@ -2,7 +2,6 @@ package transportservice;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.lucene.util.SetOnce;
 import org.opensearch.Version;
 import org.opensearch.cluster.ClusterModule;
 import org.opensearch.cluster.node.DiscoveryNode;
@@ -11,21 +10,16 @@ import org.opensearch.common.io.stream.NamedWriteableRegistry;
 import org.opensearch.common.network.NetworkModule;
 import org.opensearch.common.network.NetworkService;
 import org.opensearch.common.settings.Settings;
-import org.opensearch.common.transport.BoundTransportAddress;
 import org.opensearch.common.transport.TransportAddress;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.indices.IndicesModule;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.indices.breaker.NoneCircuitBreakerService;
-import org.opensearch.plugins.MapperPlugin;
-import org.opensearch.plugins.Plugin;
 import org.opensearch.search.SearchModule;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.*;
-import transportservice.netty4.Netty;
-import transportservice.transport.ClusterConnectionManager;
-import transportservice.transport.ConnectionManager;
+import transportservice.netty4.Netty4Transport;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -74,8 +68,8 @@ public class RunPlugin {
         final NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(namedWriteables);
         final CircuitBreakerService circuitBreakerService = new NoneCircuitBreakerService();
 
-
-        Netty transport = new Netty(
+        // Use the original Netty4Transport
+        Netty4Transport transport = new Netty4Transport(
                 settings,
                 Version.CURRENT,
                 threadPool,
@@ -88,17 +82,13 @@ public class RunPlugin {
 
         final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
-
-
         final TransportService transportService = new TransportService(
                 transport,
-                connectionManager,
-                transport.getResponseHandlers(),
                 threadPool,
-                NOOP_TRANSPORT_INTERCEPTOR
+                NOOP_TRANSPORT_INTERCEPTOR,
+                connectionManager,
+                true
         );
-
-//        connectionManager.addListener(transportService);
 
         transportService.start();
         transportService.acceptIncomingRequests();

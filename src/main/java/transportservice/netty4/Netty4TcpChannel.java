@@ -40,8 +40,8 @@ import org.opensearch.action.ActionListener;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.concurrent.CompletableContext;
+import org.opensearch.transport.TcpChannel;
 import org.opensearch.transport.TransportException;
-import transportservice.transport.TcpChannel;
 
 import java.net.InetSocketAddress;
 
