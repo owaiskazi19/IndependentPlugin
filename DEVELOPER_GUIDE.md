@@ -1,5 +1,24 @@
+- [OpenSearch SDK Developer Guide](#opensearch-sdk-developer-guide)
+  - [Introduction](#introduction)
+  - [Getting Started](#getting-started)
+    - [Git Clone IndependentPlugin Repo](#git-clone-independentplugin-repo)
+	- [Run Independent Plugin](#run-independant-plugin)
+	- [Run Tests](#run-tests)
+	- [Send Message using Telnet](#send-message-using-telnet)
 
-### Run IndependentPlugin
+# OpenSearch SDK Developer Guide
+
+## Introduction
+Opensearch plugins have allowed the extension and ehancements of various core features however, current plugin architecture carries the risk of fatally impacting clusters should they fail. In order to ensure that plugins may run safely without impacting the system, our goal is to effectively isolate plugin interactions with OpenSearch by modularizing the [extension points](https://opensearch.org/blog/technical-post/2021/12/plugins-intro/) to which they hook onto. 
+
+Read more about extensibility [here](https://github.com/opensearch-project/OpenSearch/issues/1422)
+
+## Getting Started
+
+### Git Clone IndependentPlugin Repo
+Fork [IndependentPlugin](https://github.com/owaiskazi19/IndependentPlugin) and clone locally, e.g. `git clone https://github.com/[your username]/IndependentPlugin.git`.
+
+### Run Independent Plugin
 
 Run main script using `gradlew run`.
 
@@ -55,13 +74,14 @@ ES1234SHDDF
 ```
 The original terminal will then log the recieved message if format is validated :
 ```
-                 +-------------------------------------------+
-                  |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f  |
-+----------+-------------------------------------------+----------------+
- |00000000| 45 53 31 32 33 34 53 48 44 44 46 0d 0a|ES1234SHDDF..|
-+----------+-------------------------------------------+----------------+
+         +-------------------------------------------------+
+         |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |
++--------+-------------------------------------------------+----------------+
+|00000000| 45 53 31 32 33 34 53 48 44 44 46 0d 0a          |ES1234SHDDF..   |
++--------+-------------------------------------------------+----------------+
 MESSAGE RECEIVED:ES1234SHDDF
 
 REFERENCE LENGTH 13 ES1234SHDDF
 ```
+
 
