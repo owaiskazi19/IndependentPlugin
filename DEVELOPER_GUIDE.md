@@ -2,7 +2,7 @@
   - [Introduction](#introduction)
   - [Getting Started](#getting-started)
     - [Git Clone IndependentPlugin Repo](#git-clone-independentplugin-repo)
-	- [Run Independent Plugin](#run-independant-plugin)
+	- [Run Independent Plugin](#run-independent-plugin)
 	- [Run Tests](#run-tests)
 	- [Send Message using Telnet](#send-message-using-telnet)
 
