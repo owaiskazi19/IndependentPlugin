@@ -2,10 +2,10 @@
 # OpenSearch SDK Developer Guide
 - [Introduction](#introduction)
 - [Getting Started](#getting-started)
-  - [Git Clone IndependentPlugin Repo](#git-clone-independentplugin-repo)
-	- [Run Independent Plugin](#run-independent-plugin)
-	- [Run Tests](#run-tests)
-	- [Send Message using Telnet](#send-message-using-telnet)
+ - [Git Clone IndependentPlugin Repo](#git-clone-independentplugin-repo)
+ - [Run Independent Plugin](#run-independent-plugin)
+ - [Run Tests](#run-tests)
+ - [Send Message using Telnet](#send-message-using-telnet)
 
 ## Introduction
 Opensearch plugins have allowed the extension and ehancements of various core features however, current plugin architecture carries the risk of fatally impacting clusters should they fail. In order to ensure that plugins may run safely without impacting the system, our goal is to effectively isolate plugin interactions with OpenSearch by modularizing the [extension points](https://opensearch.org/blog/technical-post/2021/12/plugins-intro/) to which they hook onto. 
