@@ -18,7 +18,9 @@ group 'org.example'
 version '1.0-SNAPSHOT'
 
 repositories {
-    maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
+    mavenLocal()
+    // Remove the commented code below once TransportService is published to maven
+    //maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
     mavenCentral()
 }
 
