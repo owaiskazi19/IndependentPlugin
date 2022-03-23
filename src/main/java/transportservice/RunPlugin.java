@@ -52,7 +52,7 @@ public class RunPlugin {
         return new InetSocketAddress(InetAddress.getLocalHost(), 0);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws UnknownHostException {
         ThreadPool threadPool = new ThreadPool(settings);
         NetworkService networkService = new NetworkService(Collections.emptyList());
         PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
@@ -83,10 +83,12 @@ public class RunPlugin {
         final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
         final TransportService transportService = new TransportService(
+                settings,
                 transport,
                 threadPool,
                 NOOP_TRANSPORT_INTERCEPTOR,
                 connectionManager,
+                emptySet(),
                 true
         );
 
