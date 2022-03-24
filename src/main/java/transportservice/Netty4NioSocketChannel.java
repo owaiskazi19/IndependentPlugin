@@ -1,4 +1,4 @@
-package transportservice;/*
+/*
  * SPDX-License-Identifier: Apache-2.0
  *
  * The OpenSearch Contributors require contributions made to
@@ -29,6 +29,8 @@ package transportservice;/*
  * Modifications Copyright OpenSearch Contributors. See
  * GitHub history for details.
  */
+
+package transportservice;
 
 import io.netty.channel.Channel;
 import io.netty.channel.socket.nio.NioSocketChannel;

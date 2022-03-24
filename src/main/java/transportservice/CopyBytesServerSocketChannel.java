@@ -1,4 +1,4 @@
-package transportservice;/*
+/*
  * SPDX-License-Identifier: Apache-2.0
  *
  * The OpenSearch Contributors require contributions made to
@@ -27,7 +27,7 @@ package transportservice;/*
 /*
  * Copyright 2012 The transportservice.Netty Project
  *
- * The transportservice.Netty Project licenses this file to you under the Apache License,
+ * The Netty Project licenses this file to you under the Apache License,
  * version 2.0 (the "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at:
  *
@@ -43,6 +43,7 @@ package transportservice;/*
  * Modifications Copyright OpenSearch Contributors. See
  * GitHub history for details.
  */
+package transportservice;
 
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.internal.SocketUtils;

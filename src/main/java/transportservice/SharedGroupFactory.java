@@ -1,4 +1,4 @@
-package transportservice;/*
+/*
  * SPDX-License-Identifier: Apache-2.0
  *
  * The OpenSearch Contributors require contributions made to
@@ -30,6 +30,7 @@ package transportservice;/*
  * GitHub history for details.
  */
 
+package transportservice;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
