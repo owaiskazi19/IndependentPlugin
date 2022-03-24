@@ -30,7 +30,7 @@
  * GitHub history for details.
  */
 
-package netty4;
+package transportservice.netty4;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;

@@ -30,7 +30,7 @@
  * GitHub history for details.
  */
 
-package netty4;
+package transportservice.netty4;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
@@ -54,7 +54,7 @@ public class Netty4Utils {
     private static final AtomicBoolean isAvailableProcessorsSet = new AtomicBoolean();
 
     /**
-     * Set the number of available processors that Netty uses for sizing various resources (e.g., thread pools).
+     * Set the number of available processors that transportservice.netty4.Netty uses for sizing various resources (e.g., thread pools).
      *
      * @param availableProcessors the number of available processors
      * @throws IllegalStateException if available processors was set previously and the specified value does not match the already-set value
@@ -75,7 +75,7 @@ public class Netty4Utils {
         } else if (availableProcessors != NettyRuntime.availableProcessors()) {
             /*
              * We have previously set the available processors yet either we are trying to set it to a different value now or there is a bug
-             * in Netty and our previous value did not take, bail.
+             * in transportservice.Netty and our previous value did not take, bail.
              */
             final String message = String.format(
                 Locale.ROOT,

@@ -25,7 +25,7 @@
  * under the License.
  */
 /*
- * Copyright 2012 The Netty Project
+ * Copyright 2012 The transportservice.Netty Project
  *
  * The Netty Project licenses this file to you under the Apache License,
  * version 2.0 (the "License"); you may not use this file except in compliance
@@ -43,6 +43,7 @@
  * Modifications Copyright OpenSearch Contributors. See
  * GitHub history for details.
  */
+package transportservice;
 
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.internal.SocketUtils;
@@ -53,7 +54,7 @@ import java.nio.channels.SocketChannel;
 import java.util.List;
 
 /**
- * This class is adapted from {@link NioServerSocketChannel} class in the Netty project. It overrides the
+ * This class is adapted from {@link NioServerSocketChannel} class in the transportservice.netty4.Netty project. It overrides the
  * channel read messages behavior to ensure that a {@link CopyBytesSocketChannel} socket channel is created.
  */
 public class CopyBytesServerSocketChannel extends NioServerSocketChannel {

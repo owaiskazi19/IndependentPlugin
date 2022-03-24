@@ -25,7 +25,7 @@
  * under the License.
  */
 /*
- * Copyright 2012 The Netty Project
+ * Copyright 2012 The transportservice.netty4.Netty Project
  *
  * The Netty Project licenses this file to you under the Apache License,
  * version 2.0 (the "License"); you may not use this file except in compliance
@@ -44,6 +44,8 @@
  * GitHub history for details.
  */
 
+package transportservice;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOutboundBuffer;
@@ -59,7 +61,7 @@ import java.nio.channels.SocketChannel;
 import static io.netty.channel.internal.ChannelUtils.MAX_BYTES_PER_GATHERING_WRITE_ATTEMPTED_LOW_THRESHOLD;
 
 /**
- * This class is adapted from {@link NioSocketChannel} class in the Netty project. It overrides the channel
+ * This class is adapted from {@link NioSocketChannel} class in the transportservice.Netty project. It overrides the channel
  * read/write behavior to ensure that the bytes are always copied to a thread-local direct bytes buffer. This
  * happens BEFORE the call to the Java {@link SocketChannel} is issued.
  *
@@ -72,7 +74,7 @@ import static io.netty.channel.internal.ChannelUtils.MAX_BYTES_PER_GATHERING_WRI
 public class CopyBytesSocketChannel extends Netty4NioSocketChannel {
 
     private static final int MAX_BYTES_PER_WRITE = StrictMath.toIntExact(
-        ByteSizeValue.parseBytesSizeValue(System.getProperty("opensearch.transport.buffer.size", "1m"), "opensearch.transport.buffer.size")
+        ByteSizeValue.parseBytesSizeValue(System.getProperty("opensearch.transportservice.transport.buffer.size", "1m"), "opensearch.transportservice.transport.buffer.size")
             .getBytes()
     );
 
