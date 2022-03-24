@@ -29,11 +29,11 @@ public class ActionListener {
             socket.bind(getLocalEphemeral(), 1);
             socket.setReuseAddress(true);
             DiscoveryNode dummy = new DiscoveryNode(
-                    "TEST",
-                    new TransportAddress(socket.getInetAddress(), socket.getLocalPort()),
-                    emptyMap(),
-                    emptySet(),
-                    version0
+                "TEST",
+                new TransportAddress(socket.getInetAddress(), socket.getLocalPort()),
+                emptyMap(),
+                emptySet(),
+                version0
             );
             Thread t = new Thread() {
                 @Override
@@ -50,15 +50,15 @@ public class ActionListener {
             t.start();
             ConnectionProfile.Builder builder = new ConnectionProfile.Builder();
             builder.addConnections(
-                    1,
-                    TransportRequestOptions.Type.BULK,
-                    TransportRequestOptions.Type.PING,
-                    TransportRequestOptions.Type.RECOVERY,
-                    TransportRequestOptions.Type.REG,
-                    TransportRequestOptions.Type.STATE
+                1,
+                TransportRequestOptions.Type.BULK,
+                TransportRequestOptions.Type.PING,
+                TransportRequestOptions.Type.RECOVERY,
+                TransportRequestOptions.Type.REG,
+                TransportRequestOptions.Type.STATE
             );
             builder.setHandshakeTimeout(TimeValue.timeValueHours(1));
-            //transportService.connectToNode(dummy, builder.build());
+            // transportService.connectToNode(dummy, builder.build());
             t.join();
 
         } catch (IOException e) {

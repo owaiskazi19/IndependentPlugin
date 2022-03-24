@@ -60,7 +60,7 @@ public final class SharedGroupFactory {
     private final Settings settings;
     private final int workerCount;
     // Remove HTTP calls
-//    private final int httpWorkerCount;
+    // private final int httpWorkerCount;
 
     private RefCountedGroup genericGroup;
     private SharedGroup dedicatedHttpGroup;
@@ -69,7 +69,7 @@ public final class SharedGroupFactory {
         this.settings = settings;
         this.workerCount = Netty4Transport.WORKER_COUNT.get(settings);
         // Remove HTTP calls
-        //this.httpWorkerCount = Netty4HttpServerTransport.SETTING_HTTP_WORKER_COUNT.get(settings);
+        // this.httpWorkerCount = Netty4HttpServerTransport.SETTING_HTTP_WORKER_COUNT.get(settings);
     }
 
     public Settings getSettings() {
@@ -85,26 +85,26 @@ public final class SharedGroupFactory {
     }
 
     // Remove HTTP calls
-//    public synchronized SharedGroup getHttpGroup() {
-//        if (httpWorkerCount == 0) {
-//            return getGenericGroup();
-//        } else {
-//            if (dedicatedHttpGroup == null) {
-//                NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup(
-//                        httpWorkerCount,
-//                        daemonThreadFactory(settings, HttpServerTransport.HTTP_SERVER_WORKER_THREAD_NAME_PREFIX)
-//                );
-//                dedicatedHttpGroup = new SharedGroup(new RefCountedGroup(eventLoopGroup));
-//            }
-//            return dedicatedHttpGroup;
-//        }
-//    }
+    // public synchronized SharedGroup getHttpGroup() {
+    // if (httpWorkerCount == 0) {
+    // return getGenericGroup();
+    // } else {
+    // if (dedicatedHttpGroup == null) {
+    // NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup(
+    // httpWorkerCount,
+    // daemonThreadFactory(settings, HttpServerTransport.HTTP_SERVER_WORKER_THREAD_NAME_PREFIX)
+    // );
+    // dedicatedHttpGroup = new SharedGroup(new RefCountedGroup(eventLoopGroup));
+    // }
+    // return dedicatedHttpGroup;
+    // }
+    // }
 
     private SharedGroup getGenericGroup() {
         if (genericGroup == null) {
             EventLoopGroup eventLoopGroup = new NioEventLoopGroup(
-                    workerCount,
-                    daemonThreadFactory(settings, TcpTransport.TRANSPORT_WORKER_THREAD_NAME_PREFIX)
+                workerCount,
+                daemonThreadFactory(settings, TcpTransport.TRANSPORT_WORKER_THREAD_NAME_PREFIX)
             );
             this.genericGroup = new RefCountedGroup(eventLoopGroup);
         } else {

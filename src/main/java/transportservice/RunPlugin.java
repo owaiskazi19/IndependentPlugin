@@ -29,10 +29,10 @@ import static java.util.Collections.emptySet;
 public class RunPlugin {
 
     private static final Settings settings = Settings.builder()
-            .put("node.name", "NettySizeHeaderFrameDecoderTests")
-            .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
-            .put(TransportSettings.PORT.getKey(), "9301")
-            .build();
+        .put("node.name", "NettySizeHeaderFrameDecoderTests")
+        .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
+        .put(TransportSettings.PORT.getKey(), "9301")
+        .build();
     private static final Logger logger = LogManager.getLogger(RunPlugin.class);
     public static final TransportInterceptor NOOP_TRANSPORT_INTERCEPTOR = new TransportInterceptor() {
     };
@@ -42,38 +42,37 @@ public class RunPlugin {
     IndicesModule indicesModule = new IndicesModule(Collections.emptyList());
     SearchModule searchModule = new SearchModule(settings, Collections.emptyList());
     List<NamedWriteableRegistry.Entry> namedWriteables = Stream.of(
-            NetworkModule.getNamedWriteables().stream(),
-            indicesModule.getNamedWriteables().stream(),
-            searchModule.getNamedWriteables().stream(),
-            null,
-            ClusterModule.getNamedWriteables().stream()
+        NetworkModule.getNamedWriteables().stream(),
+        indicesModule.getNamedWriteables().stream(),
+        searchModule.getNamedWriteables().stream(),
+        null,
+        ClusterModule.getNamedWriteables().stream()
     ).flatMap(Function.identity()).collect(Collectors.toList());
     final NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(namedWriteables);
     final CircuitBreakerService circuitBreakerService = new NoneCircuitBreakerService();
 
-
     private void startTransport() throws UnknownHostException {
         Netty4Transport transport = new Netty4Transport(
-                settings,
-                Version.CURRENT,
-                threadPool,
-                networkService,
-                pageCacheRecycler,
-                namedWriteableRegistry,
-                circuitBreakerService,
-                new SharedGroupFactory(settings)
+            settings,
+            Version.CURRENT,
+            threadPool,
+            networkService,
+            pageCacheRecycler,
+            namedWriteableRegistry,
+            circuitBreakerService,
+            new SharedGroupFactory(settings)
         );
 
         final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
         final TransportService transportService = new TransportService(
-                settings,
-                transport,
-                threadPool,
-                NOOP_TRANSPORT_INTERCEPTOR,
-                connectionManager,
-                emptySet(),
-                true
+            settings,
+            transport,
+            threadPool,
+            NOOP_TRANSPORT_INTERCEPTOR,
+            connectionManager,
+            emptySet(),
+            true
         );
 
         transportService.start();
