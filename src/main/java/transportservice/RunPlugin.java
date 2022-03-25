@@ -29,7 +29,7 @@ import static java.util.Collections.emptySet;
 public class RunPlugin {
 
     private static final Settings settings = Settings.builder()
-        .put("node.name", "NettySizeHeaderFrameDecoderTests")
+        .put("node.name", "node_extension")
         .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
         .put(TransportSettings.PORT.getKey(), "9301")
         .build();
