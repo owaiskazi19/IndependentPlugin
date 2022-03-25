@@ -18,8 +18,6 @@ public class TestMainScript extends OpenSearchTestCase {
     public void setUp() throws UnknownHostException {
 
         this.runPlugin = new RunPlugin();
-
-        // dummy settings
         this.settings = Settings.builder().put("node.name", "MainScriptTests").build();
     }
 
