@@ -36,22 +36,31 @@ public class RunPlugin {
     private static final Logger logger = LogManager.getLogger(RunPlugin.class);
     public static final TransportInterceptor NOOP_TRANSPORT_INTERCEPTOR = new TransportInterceptor() {
     };
-    ThreadPool threadPool = new ThreadPool(settings);
-    NetworkService networkService = new NetworkService(Collections.emptyList());
-    PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
-    IndicesModule indicesModule = new IndicesModule(Collections.emptyList());
-    SearchModule searchModule = new SearchModule(settings, Collections.emptyList());
-    List<NamedWriteableRegistry.Entry> namedWriteables = Stream.of(
-        NetworkModule.getNamedWriteables().stream(),
-        indicesModule.getNamedWriteables().stream(),
-        searchModule.getNamedWriteables().stream(),
-        null,
-        ClusterModule.getNamedWriteables().stream()
-    ).flatMap(Function.identity()).collect(Collectors.toList());
-    final NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(namedWriteables);
-    final CircuitBreakerService circuitBreakerService = new NoneCircuitBreakerService();
 
-    private void startTransport() throws UnknownHostException {
+    // method : set up transport service
+    public TransportService getTransportService(Settings settings) throws UnknownHostException {
+
+        TransportService transportService = null;
+
+        ThreadPool threadPool = new ThreadPool(settings);
+        NetworkService networkService = new NetworkService(Collections.emptyList());
+        PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
+
+        IndicesModule indicesModule = new IndicesModule(Collections.emptyList());
+        SearchModule searchModule = new SearchModule(settings, Collections.emptyList());
+
+        List<NamedWriteableRegistry.Entry> namedWriteables = Stream.of(
+            NetworkModule.getNamedWriteables().stream(),
+            indicesModule.getNamedWriteables().stream(),
+            searchModule.getNamedWriteables().stream(),
+            null,
+            ClusterModule.getNamedWriteables().stream()
+        ).flatMap(Function.identity()).collect(Collectors.toList());
+
+        final NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(namedWriteables);
+        final CircuitBreakerService circuitBreakerService = new NoneCircuitBreakerService();
+
+        // create netty
         Netty4Transport transport = new Netty4Transport(
             settings,
             Version.CURRENT,
@@ -63,9 +72,11 @@ public class RunPlugin {
             new SharedGroupFactory(settings)
         );
 
-        final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
+        // create ConnectionManager
+        ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
-        final TransportService transportService = new TransportService(
+        // create transport service
+        transportService = new TransportService(
             settings,
             transport,
             threadPool,
@@ -75,15 +86,35 @@ public class RunPlugin {
             true
         );
 
+        return transportService;
+    }
+
+    // manager method for transport service
+    public void startTransportService(TransportService transportService) {
+
+        // start transport service and accept incoming requests
         transportService.start();
         transportService.acceptIncomingRequests();
+    }
+
+    // manager method for action listener
+    public void startActionListener() {
         final ActionListener actionListener = new ActionListener();
         actionListener.runActionListener(true);
     }
 
     public static void main(String[] args) throws UnknownHostException {
-        RunPlugin runPlugin = new RunPlugin();
-        runPlugin.startTransport();
+
+        // start transport service and action listener
+        RunPlugin rp = new RunPlugin();
+
+        // configure and retrieve transport service with settings
+        TransportService transportService = rp.getTransportService(settings);
+
+        // start transport service and action listener
+        rp.startTransportService(transportService);
+        rp.startActionListener();
+
     }
 
 }
