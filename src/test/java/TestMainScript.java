@@ -6,7 +6,7 @@ import org.mockito.Mockito;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.transport.TransportService;
-
+import static org.hamcrest.CoreMatchers.instanceOf;
 import transportservice.RunPlugin;
 
 public class TestMainScript extends OpenSearchTestCase {
@@ -24,7 +24,7 @@ public class TestMainScript extends OpenSearchTestCase {
     // test RunPlugin getTransportService return type is transport service
     @Test
     public void testGetTransportService() throws UnknownHostException {
-        assert (runPlugin.getTransportService(settings) instanceof TransportService);
+        assertThat(runPlugin.getTransportService(settings), instanceOf(TransportService.class));
     }
 
     // test manager method invokes start on transport service
