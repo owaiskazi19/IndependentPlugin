@@ -37,13 +37,11 @@ public class RunPlugin {
     public static final TransportInterceptor NOOP_TRANSPORT_INTERCEPTOR = new TransportInterceptor() {
     };
 
-    // method : set up transport service
-    public TransportService getTransportService(Settings settings) throws UnknownHostException {
+    // method : build netty transport
+    public Netty4Transport getNetty(Settings settings, ThreadPool threadPool) {
 
-        ThreadPool threadPool = new ThreadPool(settings);
         NetworkService networkService = new NetworkService(Collections.emptyList());
         PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
-
         IndicesModule indicesModule = new IndicesModule(Collections.emptyList());
         SearchModule searchModule = new SearchModule(settings, Collections.emptyList());
 
@@ -70,8 +68,19 @@ public class RunPlugin {
             new SharedGroupFactory(settings)
         );
 
+        return transport;
+    }
+
+    // method : set up transport service
+    public TransportService getTransportService(Settings settings) throws UnknownHostException {
+
+        ThreadPool threadPool = new ThreadPool(settings);
+
+        // create netty transport
+        final Netty4Transport transport = getNetty(settings, threadPool);
+
         // create ConnectionManager
-        ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
+        final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
         // create transport service
         final TransportService transportService = new TransportService(
@@ -107,11 +116,11 @@ public class RunPlugin {
         RunPlugin runPlugin = new RunPlugin();
 
         // configure and retrieve transport service with settings
-        TransportService transportService = rp.getTransportService(settings);
+        TransportService transportService = runPlugin.getTransportService(settings);
 
         // start transport service and action listener
-        rp.startTransportService(transportService);
-        rp.startActionListener();
+        runPlugin.startTransportService(transportService);
+        runPlugin.startActionListener();
 
     }
 
