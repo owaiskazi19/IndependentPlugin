@@ -63,7 +63,7 @@ public class TestNettyTransport extends OpenSearchTestCase {
     @Test
     public void testThatProfileWithoutPortFails() throws Exception {
 
-        // dummy settings without port for profile client1
+        // dummy settings without port for profile no_port
         Settings nettySettings = Settings.builder()
             .put("node.name", "netty_test")
             .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
@@ -82,14 +82,14 @@ public class TestNettyTransport extends OpenSearchTestCase {
         }
     }
 
-    // test default progile port overrides general config
+    // test default profile port overrides general config
     @Test
     public void testDefaultProfilePortOverridesGeneralConfiguration() throws Exception {
         Settings nettySettings = Settings.builder()
             .put("node.name", "netty_test")
             .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
-            .put(TransportSettings.PORT.getKey(), "22") // SSH port will not bind
-            .put("transport.profiles.default.port", 0) // default port configuration will overrite
+            .put(TransportSettings.PORT.getKey(), "22") // attempt to bind SSH port will throw exception
+            .put("transport.profiles.default.port", 0) // default port configuration will overwrite attempt
             .build();
 
         try (Netty4Transport transport = startNettyTransport(runPlugin.getNetty(nettySettings, threadPool))) {
