@@ -63,7 +63,7 @@ public class TestNettyTransport extends OpenSearchTestCase {
     @Test
     public void testThatProfileWithoutPortFails() throws Exception {
 
-        // dummy settings without port for profile no_port
+        // settings without port for profile no_port
         Settings nettySettings = Settings.builder()
             .put("node.name", "netty_test")
             .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
