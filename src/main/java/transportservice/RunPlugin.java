@@ -40,8 +40,6 @@ public class RunPlugin {
     // method : set up transport service
     public TransportService getTransportService(Settings settings) throws UnknownHostException {
 
-        TransportService transportService = null;
-
         ThreadPool threadPool = new ThreadPool(settings);
         NetworkService networkService = new NetworkService(Collections.emptyList());
         PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
@@ -76,7 +74,7 @@ public class RunPlugin {
         ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
         // create transport service
-        transportService = new TransportService(
+        final TransportService transportService = new TransportService(
             settings,
             transport,
             threadPool,
