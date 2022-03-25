@@ -104,7 +104,7 @@ public class RunPlugin {
     public static void main(String[] args) throws UnknownHostException {
 
         // start transport service and action listener
-        RunPlugin rp = new RunPlugin();
+        RunPlugin runPlugin = new RunPlugin();
 
         // configure and retrieve transport service with settings
         TransportService transportService = rp.getTransportService(settings);
