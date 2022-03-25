@@ -61,19 +61,18 @@ final class Netty4MessageChannelHandler extends ChannelDuplexHandler {
     private WriteOperation currentWrite;
     private final InboundPipeline pipeline;
 
-
     Netty4MessageChannelHandler(PageCacheRecycler recycler, Netty4Transport transport) {
         this.transport = transport;
         final ThreadPool threadPool = transport.getThreadPool();
         final Transport.RequestHandlers requestHandlers = transport.getRequestHandlers();
         this.pipeline = new InboundPipeline(
-                transport.getVersion(),
-                transport.getStatsTracker(),
-                recycler,
-                threadPool::relativeTimeInMillis,
-                transport.getInflightBreaker(),
-                requestHandlers::getHandler,
-                transport::inboundMessage
+            transport.getVersion(),
+            transport.getStatsTracker(),
+            recycler,
+            threadPool::relativeTimeInMillis,
+            transport.getInflightBreaker(),
+            requestHandlers::getHandler,
+            transport::inboundMessage
         );
     }
 
@@ -137,7 +136,7 @@ final class Netty4MessageChannelHandler extends ChannelDuplexHandler {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         assert Transports.assertDefaultThreadContext(transport.getThreadPool().getThreadContext());
         doFlush(ctx);
-//        Releasables.closeWhileHandlingException(pipeline);
+        // Releasables.closeWhileHandlingException(pipeline);
         super.channelInactive(ctx);
     }
 

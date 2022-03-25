@@ -74,8 +74,10 @@ import static io.netty.channel.internal.ChannelUtils.MAX_BYTES_PER_GATHERING_WRI
 public class CopyBytesSocketChannel extends Netty4NioSocketChannel {
 
     private static final int MAX_BYTES_PER_WRITE = StrictMath.toIntExact(
-        ByteSizeValue.parseBytesSizeValue(System.getProperty("opensearch.transportservice.transport.buffer.size", "1m"), "opensearch.transportservice.transport.buffer.size")
-            .getBytes()
+        ByteSizeValue.parseBytesSizeValue(
+            System.getProperty("opensearch.transportservice.transport.buffer.size", "1m"),
+            "opensearch.transportservice.transport.buffer.size"
+        ).getBytes()
     );
 
     private static final ThreadLocal<ByteBuffer> ioBuffer = ThreadLocal.withInitial(() -> ByteBuffer.allocateDirect(MAX_BYTES_PER_WRITE));
