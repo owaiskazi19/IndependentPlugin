@@ -38,7 +38,7 @@ public class RunPlugin {
     };
 
     // method : build netty transport
-    public Netty4Transport getNetty(Settings settings, ThreadPool threadPool) {
+    public Netty4Transport getNetty4Transport(Settings settings, ThreadPool threadPool) {
 
         NetworkService networkService = new NetworkService(Collections.emptyList());
         PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
@@ -77,7 +77,7 @@ public class RunPlugin {
         ThreadPool threadPool = new ThreadPool(settings);
 
         // create netty transport
-        final Netty4Transport transport = getNetty(settings, threadPool);
+        final Netty4Transport transport = getNetty4Transport(settings, threadPool);
 
         // create ConnectionManager
         final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);

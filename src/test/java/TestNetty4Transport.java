@@ -10,7 +10,7 @@ import org.opensearch.transport.TransportSettings;
 import transportservice.RunPlugin;
 import transportservice.netty4.Netty4Transport;
 
-public class TestNettyTransport extends OpenSearchTestCase {
+public class TestNetty4Transport extends OpenSearchTestCase {
 
     private RunPlugin runPlugin;
     private ThreadPool threadPool;
@@ -25,14 +25,17 @@ public class TestNettyTransport extends OpenSearchTestCase {
     @Test
     public void testNettyCanBindToMultiplePorts() throws Exception {
 
-        Settings nettySettings = Settings.builder()
+        Settings settings = Settings.builder()
             .put("node.name", "netty_test")
             .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
             .put("transport.profiles.default.port", 0)
             .put("transport.profiles.client1.port", 0)
             .build();
 
-        try (Netty4Transport transport = startNettyTransport(runPlugin.getNetty(nettySettings, threadPool))) {
+        Netty4Transport transport = runPlugin.getNetty4Transport(settings, threadPool);
+
+        try {
+            startNetty4Transport(transport);
             assertEquals(1, transport.profileBoundAddresses().size());
             assertEquals(1, transport.boundAddress().boundAddresses().length);
         } finally {
@@ -45,13 +48,16 @@ public class TestNettyTransport extends OpenSearchTestCase {
     public void testDefaultProfileInheritsFomStandardSettings() throws Exception {
 
         // omit transport.profiles.default.port setting to determine if default port is automatically set
-        Settings nettySettings = Settings.builder()
+        Settings settings = Settings.builder()
             .put("node.name", "netty_test")
             .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
             .put("transport.profiles.client1.port", 0)
             .build();
 
-        try (Netty4Transport transport = startNettyTransport(runPlugin.getNetty(nettySettings, threadPool))) {
+        Netty4Transport transport = runPlugin.getNetty4Transport(settings, threadPool);
+
+        try {
+            startNetty4Transport(transport);
             assertEquals(1, transport.profileBoundAddresses().size());
             assertEquals(1, transport.boundAddress().boundAddresses().length);
         } finally {
@@ -64,7 +70,7 @@ public class TestNettyTransport extends OpenSearchTestCase {
     public void testThatProfileWithoutPortFails() throws Exception {
 
         // settings without port for profile no_port
-        Settings nettySettings = Settings.builder()
+        Settings settings = Settings.builder()
             .put("node.name", "netty_test")
             .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
             .put("transport.profiles.no_port.foo", "bar")
@@ -72,10 +78,7 @@ public class TestNettyTransport extends OpenSearchTestCase {
 
         try {
             // attempt creating netty object with invalid settings
-            IllegalStateException ex = expectThrows(
-                IllegalStateException.class,
-                () -> startNettyTransport(runPlugin.getNetty(nettySettings, threadPool))
-            );
+            IllegalStateException ex = expectThrows(IllegalStateException.class, () -> runPlugin.getNetty4Transport(settings, threadPool));
             assertEquals("profile [no_port] has no port configured", ex.getMessage());
         } finally {
             terminate(threadPool);
@@ -85,14 +88,17 @@ public class TestNettyTransport extends OpenSearchTestCase {
     // test default profile port overrides general config
     @Test
     public void testDefaultProfilePortOverridesGeneralConfiguration() throws Exception {
-        Settings nettySettings = Settings.builder()
+        Settings settings = Settings.builder()
             .put("node.name", "netty_test")
             .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
             .put(TransportSettings.PORT.getKey(), "22") // attempt to bind SSH port will throw exception
             .put("transport.profiles.default.port", 0) // default port configuration will overwrite attempt
             .build();
 
-        try (Netty4Transport transport = startNettyTransport(runPlugin.getNetty(nettySettings, threadPool))) {
+        Netty4Transport transport = runPlugin.getNetty4Transport(settings, threadPool);
+
+        try {
+            startNetty4Transport(transport);
             assertEquals(0, transport.profileBoundAddresses().size());
             assertEquals(1, transport.boundAddress().boundAddresses().length);
         } finally {
@@ -101,9 +107,8 @@ public class TestNettyTransport extends OpenSearchTestCase {
     }
 
     // helper method to ensure netty transport was started
-    private Netty4Transport startNettyTransport(Netty4Transport transport) {
+    private void startNetty4Transport(Netty4Transport transport) {
         transport.start();
         assertEquals(transport.lifecycleState(), Lifecycle.State.STARTED);
-        return transport;
     }
 }
