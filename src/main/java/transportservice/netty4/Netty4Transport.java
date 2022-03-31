@@ -33,7 +33,16 @@ package transportservice.netty4;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
+import io.netty.channel.AdaptiveRecvByteBufAllocator;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.FixedRecvByteBufAllocator;
+import io.netty.channel.RecvByteBufAllocator;
 import io.netty.channel.socket.nio.NioChannelOption;
 import io.netty.util.AttributeKey;
 import org.apache.logging.log4j.LogManager;
@@ -41,7 +50,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.Version;
-import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.common.SuppressForbidden;
 import org.opensearch.common.io.stream.NamedWriteableRegistry;
 import org.opensearch.common.lease.Releasables;
@@ -54,14 +62,19 @@ import org.opensearch.common.unit.ByteSizeValue;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.common.util.concurrent.OpenSearchExecutors;
 import org.opensearch.core.internal.net.NetUtils;
+import org.opensearch.discovery.Discoverable;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.threadpool.ThreadPool;
-import org.opensearch.transport.TcpTransport;
-import org.opensearch.transport.TransportSettings;
 import transportservice.Netty4NioSocketChannel;
 import transportservice.NettyAllocator;
 import transportservice.NettyByteBufSizer;
 import transportservice.SharedGroupFactory;
+import org.opensearch.transport.TcpTransport;
+import org.opensearch.transport.TransportSettings;
+import transportservice.netty4.Netty4MessageChannelHandler;
+import transportservice.netty4.Netty4TcpChannel;
+import transportservice.netty4.Netty4TcpServerChannel;
+import transportservice.netty4.OpenSearchLoggingHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -82,26 +95,26 @@ public class Netty4Transport extends TcpTransport {
     private static final Logger logger = LogManager.getLogger(Netty4Transport.class);
 
     public static final Setting<Integer> WORKER_COUNT = new Setting<>(
-        "transport.netty.worker_count",
-        (s) -> Integer.toString(OpenSearchExecutors.allocatedProcessors(s)),
-        (s) -> Setting.parseInt(s, 1, "transport.netty.worker_count"),
-        Property.NodeScope
+            "transport.netty.worker_count",
+            (s) -> Integer.toString(OpenSearchExecutors.allocatedProcessors(s)),
+            (s) -> Setting.parseInt(s, 1, "transport.netty.worker_count"),
+            Property.NodeScope
     );
 
     public static final Setting<ByteSizeValue> NETTY_RECEIVE_PREDICTOR_SIZE = Setting.byteSizeSetting(
-        "transport.netty.receive_predictor_size",
-        new ByteSizeValue(64, ByteSizeUnit.KB),
-        Property.NodeScope
+            "transport.netty.receive_predictor_size",
+            new ByteSizeValue(64, ByteSizeUnit.KB),
+            Property.NodeScope
     );
     public static final Setting<ByteSizeValue> NETTY_RECEIVE_PREDICTOR_MIN = byteSizeSetting(
-        "transport.netty.receive_predictor_min",
-        NETTY_RECEIVE_PREDICTOR_SIZE,
-        Property.NodeScope
+            "transport.netty.receive_predictor_min",
+            NETTY_RECEIVE_PREDICTOR_SIZE,
+            Property.NodeScope
     );
     public static final Setting<ByteSizeValue> NETTY_RECEIVE_PREDICTOR_MAX = byteSizeSetting(
-        "transport.netty.receive_predictor_max",
-        NETTY_RECEIVE_PREDICTOR_SIZE,
-        Property.NodeScope
+            "transport.netty.receive_predictor_max",
+            NETTY_RECEIVE_PREDICTOR_SIZE,
+            Property.NodeScope
     );
     public static final Setting<Integer> NETTY_BOSS_COUNT = intSetting("transport.netty.boss_count", 1, 1, Property.NodeScope);
 
@@ -114,14 +127,14 @@ public class Netty4Transport extends TcpTransport {
     private volatile SharedGroupFactory.SharedGroup sharedGroup;
 
     public Netty4Transport(
-        Settings settings,
-        Version version,
-        ThreadPool threadPool,
-        NetworkService networkService,
-        PageCacheRecycler pageCacheRecycler,
-        NamedWriteableRegistry namedWriteableRegistry,
-        CircuitBreakerService circuitBreakerService,
-        SharedGroupFactory sharedGroupFactory
+            Settings settings,
+            Version version,
+            ThreadPool threadPool,
+            NetworkService networkService,
+            PageCacheRecycler pageCacheRecycler,
+            NamedWriteableRegistry namedWriteableRegistry,
+            CircuitBreakerService circuitBreakerService,
+            SharedGroupFactory sharedGroupFactory
     ) {
         super(settings, version, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService);
         Netty4Utils.setAvailableProcessors(OpenSearchExecutors.NODE_PROCESSORS_SETTING.get(settings));
@@ -135,9 +148,9 @@ public class Netty4Transport extends TcpTransport {
             recvByteBufAllocator = new FixedRecvByteBufAllocator((int) receivePredictorMax.getBytes());
         } else {
             recvByteBufAllocator = new AdaptiveRecvByteBufAllocator(
-                (int) receivePredictorMin.getBytes(),
-                (int) receivePredictorMin.getBytes(),
-                (int) receivePredictorMax.getBytes()
+                    (int) receivePredictorMin.getBytes(),
+                    (int) receivePredictorMin.getBytes(),
+                    (int) receivePredictorMax.getBytes()
             );
         }
     }
@@ -218,14 +231,14 @@ public class Netty4Transport extends TcpTransport {
         String name = profileSettings.profileName;
         if (logger.isDebugEnabled()) {
             logger.debug(
-                "using profile[{}], worker_count[{}], port[{}], bind_host[{}], publish_host[{}], receive_predictor[{}->{}]",
-                name,
-                sharedGroupFactory.getTransportWorkerCount(),
-                profileSettings.portOrRange,
-                profileSettings.bindHosts,
-                profileSettings.publishHosts,
-                receivePredictorMin,
-                receivePredictorMax
+                    "using profile[{}], worker_count[{}], port[{}], bind_host[{}], publish_host[{}], receive_predictor[{}->{}]",
+                    name,
+                    sharedGroupFactory.getTransportWorkerCount(),
+                    profileSettings.portOrRange,
+                    profileSettings.bindHosts,
+                    profileSettings.publishHosts,
+                    receivePredictorMin,
+                    receivePredictorMax
             );
         }
 
@@ -290,7 +303,7 @@ public class Netty4Transport extends TcpTransport {
         return new ServerChannelInitializer(name);
     }
 
-    protected ChannelHandler getClientChannelInitializer(DiscoveryNode node) {
+    protected ChannelHandler getClientChannelInitializer(Discoverable node) {
         return new ClientChannelInitializer();
     }
 
@@ -298,7 +311,7 @@ public class Netty4Transport extends TcpTransport {
     static final AttributeKey<Netty4TcpServerChannel> SERVER_CHANNEL_KEY = AttributeKey.newInstance("es-server-channel");
 
     @Override
-    protected Netty4TcpChannel initiateChannel(DiscoveryNode node) throws IOException {
+    protected Netty4TcpChannel initiateChannel(Discoverable node) throws IOException {
         InetSocketAddress address = node.getAddress().address();
         Bootstrap bootstrapWithHandler = clientBootstrap.clone();
         bootstrapWithHandler.handler(getClientChannelInitializer(node));
