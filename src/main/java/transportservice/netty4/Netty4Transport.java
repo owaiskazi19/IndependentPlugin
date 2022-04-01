@@ -33,16 +33,7 @@ package transportservice.netty4;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.AdaptiveRecvByteBufAllocator;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.FixedRecvByteBufAllocator;
-import io.netty.channel.RecvByteBufAllocator;
+import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioChannelOption;
 import io.netty.util.AttributeKey;
 import org.apache.logging.log4j.LogManager;
@@ -50,6 +41,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.Version;
+import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.common.SuppressForbidden;
 import org.opensearch.common.io.stream.NamedWriteableRegistry;
 import org.opensearch.common.lease.Releasables;
@@ -62,19 +54,14 @@ import org.opensearch.common.unit.ByteSizeValue;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.common.util.concurrent.OpenSearchExecutors;
 import org.opensearch.core.internal.net.NetUtils;
-import org.opensearch.discovery.Discoverable;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.TcpTransport;
+import org.opensearch.transport.TransportSettings;
 import transportservice.Netty4NioSocketChannel;
 import transportservice.NettyAllocator;
 import transportservice.NettyByteBufSizer;
 import transportservice.SharedGroupFactory;
-import org.opensearch.transport.TcpTransport;
-import org.opensearch.transport.TransportSettings;
-import transportservice.netty4.Netty4MessageChannelHandler;
-import transportservice.netty4.Netty4TcpChannel;
-import transportservice.netty4.Netty4TcpServerChannel;
-import transportservice.netty4.OpenSearchLoggingHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -303,7 +290,7 @@ public class Netty4Transport extends TcpTransport {
         return new ServerChannelInitializer(name);
     }
 
-    protected ChannelHandler getClientChannelInitializer(Discoverable node) {
+    protected ChannelHandler getClientChannelInitializer(DiscoveryNode node) {
         return new ClientChannelInitializer();
     }
 
@@ -311,7 +298,7 @@ public class Netty4Transport extends TcpTransport {
     static final AttributeKey<Netty4TcpServerChannel> SERVER_CHANNEL_KEY = AttributeKey.newInstance("es-server-channel");
 
     @Override
-    protected Netty4TcpChannel initiateChannel(Discoverable node) throws IOException {
+    protected Netty4TcpChannel initiateChannel(DiscoveryNode node) throws IOException {
         InetSocketAddress address = node.getAddress().address();
         Bootstrap bootstrapWithHandler = clientBootstrap.clone();
         bootstrapWithHandler.handler(getClientChannelInitializer(node));

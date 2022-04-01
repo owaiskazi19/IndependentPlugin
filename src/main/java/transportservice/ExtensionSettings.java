@@ -2,47 +2,37 @@ package transportservice;
 
 public class ExtensionSettings {
 
-    public ExtensionSettings(String nodename, String hostaddress, String hostport) {
-        this.nodename = nodename;
-        this.hostaddress = hostaddress;
-        this.hostport = hostport;
-    }
-
-    public ExtensionSettings() {}
-
     private String nodename;
     private String hostaddress;
     private String hostport;
 
-    public String getNodeName() {
+    public String getNodename() {
         return nodename;
     }
 
-    public void setNodeName(String nodename) {
+    public void setNodename(String nodename) {
         this.nodename = nodename;
     }
 
-    public String getHostAddress() {
+    public String getHostaddress() {
         return hostaddress;
     }
 
-    public void getHostAddress(String hostaddress) {
+    public void getHostaddress(String hostaddress) {
         this.hostaddress = hostaddress;
     }
 
-    public String getHostPort(){
+    public String getHostport() {
         return hostport;
     }
 
-    public void setHostPort(String hostport) {
+    public void setHostport(String hostport) {
         this.hostport = hostport;
     }
 
     @Override
     public String toString() {
-        return "\nnodename: " + nodename + "\nhostaddress: "
-                + hostaddress + "\nhostPort: " + hostport
-                + "\n";
+        return "\nnodename: " + nodename + "\nhostaddress: " + hostaddress + "\nhostPort: " + hostport + "\n";
     }
 
 }
