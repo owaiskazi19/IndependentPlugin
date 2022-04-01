@@ -14,14 +14,7 @@ import transportservice.RunPlugin;
 import transportservice.netty4.Netty4Transport;
 import org.opensearch.threadpool.ThreadPool;
 
-public class ExtensionIT extends OpenSearchIntegTestCase {
-
-    // integration tests
-    // - test transport information is exposed
-    // - test transport request / response
-    // - (SDK transport) test handshake request recieved (message "internal:tcp/handshake recieved request")
-    // - (SDK transport) test handshake request response sent (message : internal:tcp/handshake sent response)
-    // - (SDK action listener) test action listener work
+public class TransportCommunicationIT extends OpenSearchIntegTestCase {
 
     private int port;
     private Settings settings;
@@ -87,16 +80,10 @@ public class ExtensionIT extends OpenSearchIntegTestCase {
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     PrintStream out = new PrintStream(socket.getOutputStream());
 
-                    // server logs MESSAGE RECIEVED: TESTTT
                     // note : message validation is only done if message length >= 6 bytes
-                    // character is 1 byte
-                    out.print("TESTTT");
+                    out.println("TESTT");
 
-                    // Exception will originate from org.opensearch.transport.TcpTransport
-                    // - invalid internal transport message format
-                    // Expected behavior : transport service will close connection to client
-                    // disconnection by foreign host indicated by a return value of -1
-                    // only way to check if connection was closed by foreign host is to attempt to read
+                    // disconnection by foreign host indicated by a read return value of -1
                     clientResult = String.valueOf(in.read());
 
                     // Close stream and socket connection
@@ -140,22 +127,20 @@ public class ExtensionIT extends OpenSearchIntegTestCase {
         assertEquals("Connection refused", clientResult);
     }
 
-    // test extension handshake recieved and acknowledged
-    @Test
-    public void testHandshakeRequestRecievedAndAcknowledged() {
+    // TODO : test SDK message protocol, extension handshake recieved and acknowledged
+    // @Test
+    // public void testHandshakeRequestRecievedAndAcknowledged() {
 
-        // send handshake request to SDK transport service
-        // - this is done when opensearch transport attempts to connect to extension node
-        // - SDK expected behavior is to recieve and validate message, and identify message as a handshake request
-        // - upon identification, SDK logs handshake request recieved
-        // - SDK then sends response to acknowledge handshake request
-        // assert that SDK logs : [internal:tcp/handshake] received request
-        // assert that SDK logs : [internal:tcp/handshake] sent response
-    }
+    // send handshake request to SDK transport service
+    // - this is done when opensearch transport attempts to connect to extension node
+    // - SDK expected behavior is to recieve and validate message, and identify message as a handshake request
+    // - upon identification, SDK logs handshake request recieved
+    // - SDK then sends response to acknowledge handshake request
+    // assert that SDK logs : [internal:tcp/handshake] received request
+    // assert that SDK logs : [internal:tcp/handshake] sent response
+    // }
 
     // TODO : test SDK message deserialization / serialization
-    // TODO : test SDK valid message format
-    // TODO : test SDK message protocol
 
     private int getRandomPort() {
         // generate port number within IANA suggested range for dynamic or private ports
