@@ -127,21 +127,6 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
         assertEquals("Connection refused", clientResult);
     }
 
-    // TODO : test SDK message protocol, extension handshake recieved and acknowledged
-    // @Test
-    // public void testHandshakeRequestRecievedAndAcknowledged() {
-
-    // send handshake request to SDK transport service
-    // - this is done when opensearch transport attempts to connect to extension node
-    // - SDK expected behavior is to recieve and validate message, and identify message as a handshake request
-    // - upon identification, SDK logs handshake request recieved
-    // - SDK then sends response to acknowledge handshake request
-    // assert that SDK logs : [internal:tcp/handshake] received request
-    // assert that SDK logs : [internal:tcp/handshake] sent response
-    // }
-
-    // TODO : test SDK message deserialization / serialization
-
     private int getRandomPort() {
         // generate port number within IANA suggested range for dynamic or private ports
         return (int) ((Math.random() * (maxPort - minPort)) + minPort);
