@@ -81,7 +81,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
                     PrintStream out = new PrintStream(socket.getOutputStream());
 
                     // note : message validation is only done if message length >= 6 bytes
-                    out.println("TESTT");
+                    out.println("TRANSPORT_TEST");
 
                     // disconnection by foreign host indicated by a read return value of -1
                     clientResult = String.valueOf(in.read());
