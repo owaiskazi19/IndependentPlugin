@@ -130,7 +130,6 @@ public class RunPlugin {
 
     public static void main(String[] args) throws IOException {
 
-
         RunPlugin runPlugin = new RunPlugin();
 
         // configure and retrieve transport service with settings

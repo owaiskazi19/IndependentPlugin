@@ -67,7 +67,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
     }
 
     @Test
-    public void testInvalidMessageFormat() throws UnknownHostException, InterruptedException {
+    public void testInvalidMessageFormat() throws IOException, InterruptedException {
         Thread client = new Thread() {
             @Override
             public void run() {
@@ -104,7 +104,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
     }
 
     @Test
-    public void testMismatchingPort() throws UnknownHostException, InterruptedException {
+    public void testMismatchingPort() throws IOException, InterruptedException {
 
         Thread client = new Thread() {
             @Override
@@ -132,7 +132,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
         return (int) ((Math.random() * (maxPort - minPort)) + minPort);
     }
 
-    private void startTransportandClient(Settings settings, Thread client) throws UnknownHostException, InterruptedException {
+    private void startTransportandClient(Settings settings, Thread client) throws IOException, InterruptedException {
 
         // retrieve transport service
         RunPlugin runPlugin = new RunPlugin();
