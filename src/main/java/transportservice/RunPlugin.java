@@ -21,7 +21,6 @@ import org.opensearch.transport.*;
 import transportservice.netty4.Netty4Transport;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
@@ -82,7 +81,7 @@ public class RunPlugin {
 
     }
 
-    public TransportService getTransportService(Settings settings) throws UnknownHostException {
+    public TransportService getTransportService(Settings settings) throws IOException {
 
         ThreadPool threadPool = new ThreadPool(settings);
 
@@ -120,6 +119,7 @@ public class RunPlugin {
             PluginRequest::new,
             (request, channel, task) -> channel.sendResponse(handlePluginsRequest(request))
         );
+
     }
 
     // manager method for action listener
@@ -129,6 +129,7 @@ public class RunPlugin {
     }
 
     public static void main(String[] args) throws IOException {
+
 
         RunPlugin runPlugin = new RunPlugin();
 
