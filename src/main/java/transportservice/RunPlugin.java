@@ -37,8 +37,17 @@ public class RunPlugin {
 
     public static final String REQUEST_EXTENSION_ACTION_NAME = "internal:discovery/extensions";
 
-    private final ExtensionSettings extensionSettings = getExtensionSettings();
-    private final Settings settings = Settings.builder()
+    private static ExtensionSettings extensionSettings = null;
+
+    static {
+        try {
+            extensionSettings = getExtensionSettings();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static final Settings settings = Settings.builder()
         .put("node.name", extensionSettings.getExtensionname())
         .put(TransportSettings.BIND_HOST.getKey(), extensionSettings.getHostaddress())
         .put(TransportSettings.PORT.getKey(), extensionSettings.getHostport())
@@ -49,19 +58,18 @@ public class RunPlugin {
 
     public RunPlugin() throws IOException {}
 
-    public ExtensionSettings getExtensionSettings() throws IOException {
+    public static ExtensionSettings getExtensionSettings() throws IOException {
         File file = new File(ExtensionSettings.EXTENSION_DESCRIPTOR);
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         ExtensionSettings extensionSettings = objectMapper.readValue(file, ExtensionSettings.class);
         return extensionSettings;
     }
-    
+
     PluginResponse handlePluginsRequest(PluginRequest pluginRequest) {
         logger.info("Handling Plugins Request");
         PluginResponse pluginResponse = new PluginResponse("RealExtension");
         return pluginResponse;
     }
-    
 
     // method : build netty transport
     public Netty4Transport getNetty4Transport(Settings settings, ThreadPool threadPool) {
