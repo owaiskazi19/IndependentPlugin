@@ -17,7 +17,7 @@ import org.opensearch.threadpool.ThreadPool;
 public class TransportCommunicationIT extends OpenSearchIntegTestCase {
 
     private Settings settings;
-    private final int port = 9302;
+    private final int port = 7777;
     private final String host = "127.0.0.1";
     private volatile String clientResult;
 
@@ -110,11 +110,10 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
             @Override
             public void run() {
                 try {
-                    // test ports are in range
                     Socket socket = new Socket(host, 0);
                     socket.close();
                 } catch (Exception e) {
-                    clientResult = e.getClass().getCanonicalName();
+                    clientResult = "connection refused";
                 }
 
             }
@@ -124,7 +123,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
         startTransportandClient(settings, client);
 
         // confirm that connect exception was caught
-        assertEquals("java.net.ConnectException", clientResult);
+        assertEquals("connection refused", clientResult);
     }
 
     private void startTransportandClient(Settings settings, Thread client) throws IOException, InterruptedException {
