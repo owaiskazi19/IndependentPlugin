@@ -16,10 +16,8 @@ import org.opensearch.threadpool.ThreadPool;
 
 public class TransportCommunicationIT extends OpenSearchIntegTestCase {
 
-    private final int port = 9301;
     private Settings settings;
-    private final int minPort = 49152;
-    private final int maxPort = 65535;
+    private final int port = 9301;
     private final String host = "127.0.0.1";
     private volatile String clientResult;
 
