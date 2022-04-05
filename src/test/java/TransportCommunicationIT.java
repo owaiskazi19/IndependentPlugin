@@ -123,6 +123,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
         // start transport service and attempt client connection
         startTransportandClient(settings, client);
 
+        System.out.println("MISMATCHING PORT TEST CLIENT RESULT : " + clientResult);
         // expecting server response "Connection refused"
         assertEquals("Connection refused", clientResult);
     }
