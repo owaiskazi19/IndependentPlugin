@@ -5,7 +5,8 @@ public class ExtensionSettings {
     private String extensionname;
     private String hostaddress;
     private String hostport;
-    static final String EXTENSION_DESCRIPTOR = "src/main/java/transportservice/extension.yml";
+    // Change the location to extension.yml file of the extension
+    static final String EXTENSION_DESCRIPTOR = "src/test/resources/extension.yml";
 
     public String getExtensionname() {
         return extensionname;

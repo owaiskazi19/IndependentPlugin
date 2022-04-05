@@ -1,7 +1,6 @@
 import static org.mockito.Mockito.times;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -16,7 +15,7 @@ public class TestMainScript extends OpenSearchTestCase {
     private Settings settings;
 
     @BeforeEach
-    public void setUp() throws UnknownHostException {
+    public void setUp() throws IOException {
 
         this.runPlugin = new RunPlugin();
         this.settings = Settings.builder().put("node.name", "MainScriptTests").build();
