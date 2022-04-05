@@ -114,7 +114,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
                     Socket socket = new Socket(host, 0);
                     socket.close();
                 } catch (Exception e) {
-                    clientResult = e.getMessage();
+                    clientResult = e.getClass().getCanonicalName();
                 }
 
             }
@@ -123,9 +123,8 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
         // start transport service and attempt client connection
         startTransportandClient(settings, client);
 
-        System.out.println("MISMATCHING PORT TEST CLIENT RESULT : " + clientResult);
-        // expecting server response "Connection refused"
-        assertEquals("Connection refused", clientResult);
+        // confirm that connect exceptionw was caught
+        assertEquals("java.net.ConnectException", clientResult);
     }
 
     private void startTransportandClient(Settings settings, Thread client) throws IOException, InterruptedException {
