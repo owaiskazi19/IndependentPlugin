@@ -1,4 +1,6 @@
 import static org.mockito.Mockito.times;
+
+import java.io.IOException;
 import java.net.UnknownHostException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,13 +24,13 @@ public class TestMainScript extends OpenSearchTestCase {
 
     // test RunPlugin getTransportService return type is transport service
     @Test
-    public void testGetTransportService() throws UnknownHostException {
+    public void testGetTransportService() throws IOException {
         assert (runPlugin.getTransportService(settings) instanceof TransportService);
     }
 
     // test manager method invokes start on transport service
     @Test
-    public void testTransportServiceStarted() throws UnknownHostException {
+    public void testTransportServiceStarted() throws IOException {
 
         // retrieve and mock transport service
         TransportService transportService = Mockito.spy(runPlugin.getTransportService(settings));
@@ -40,7 +42,7 @@ public class TestMainScript extends OpenSearchTestCase {
 
     // test manager method invokes accept incoming requests on transport service
     @Test
-    public void testTransportServiceAcceptedIncomingRequests() throws UnknownHostException {
+    public void testTransportServiceAcceptedIncomingRequests() throws IOException {
 
         // retrieve and mock transport service
         TransportService transportService = Mockito.spy(runPlugin.getTransportService(settings));

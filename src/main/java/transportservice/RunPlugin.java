@@ -47,7 +47,7 @@ public class RunPlugin {
         PluginResponse pluginResponse = new PluginResponse("RealExtension");
         return pluginResponse;
     }
-    
+
     // method : build netty transport
     public Netty4Transport getNetty4Transport(Settings settings, ThreadPool threadPool) {
 

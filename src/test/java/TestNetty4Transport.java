@@ -1,4 +1,4 @@
-import java.net.UnknownHostException;
+import java.io.IOException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.common.component.Lifecycle;
@@ -16,14 +16,14 @@ public class TestNetty4Transport extends OpenSearchTestCase {
     private ThreadPool threadPool;
 
     @BeforeEach
-    public void setUp() throws UnknownHostException {
+    public void setUp() throws IOException {
         this.runPlugin = new RunPlugin();
         this.threadPool = new TestThreadPool("test");
     }
 
     // test Netty can bind to multiple ports, default and additional client
     @Test
-    public void testNettyCanBindToMultiplePorts() throws Exception {
+    public void testNettyCanBindToMultiplePorts() throws IOException {
 
         Settings settings = Settings.builder()
             .put("node.name", "netty_test")
@@ -39,13 +39,14 @@ public class TestNetty4Transport extends OpenSearchTestCase {
             assertEquals(1, transport.profileBoundAddresses().size());
             assertEquals(1, transport.boundAddress().boundAddresses().length);
         } finally {
+            stopNetty4Transport(transport);
             terminate(threadPool);
         }
     }
 
     // test that default profile inherits from standard settings
     @Test
-    public void testDefaultProfileInheritsFomStandardSettings() throws Exception {
+    public void testDefaultProfileInheritsFomStandardSettings() throws IOException {
 
         // omit transport.profiles.default.port setting to determine if default port is automatically set
         Settings settings = Settings.builder()
@@ -61,13 +62,14 @@ public class TestNetty4Transport extends OpenSearchTestCase {
             assertEquals(1, transport.profileBoundAddresses().size());
             assertEquals(1, transport.boundAddress().boundAddresses().length);
         } finally {
+            stopNetty4Transport(transport);
             terminate(threadPool);
         }
     }
 
     // test profile without port settings fails
     @Test
-    public void testThatProfileWithoutPortFails() throws Exception {
+    public void testThatProfileWithoutPortFails() throws IOException {
 
         // settings without port for profile no_port
         Settings settings = Settings.builder()
@@ -87,7 +89,7 @@ public class TestNetty4Transport extends OpenSearchTestCase {
 
     // test default profile port overrides general config
     @Test
-    public void testDefaultProfilePortOverridesGeneralConfiguration() throws Exception {
+    public void testDefaultProfilePortOverridesGeneralConfiguration() throws IOException {
         Settings settings = Settings.builder()
             .put("node.name", "netty_test")
             .put(TransportSettings.BIND_HOST.getKey(), "127.0.0.1")
@@ -109,6 +111,11 @@ public class TestNetty4Transport extends OpenSearchTestCase {
     // helper method to ensure netty transport was started
     private void startNetty4Transport(Netty4Transport transport) {
         transport.start();
-        assertEquals(transport.lifecycleState(), Lifecycle.State.STARTED);
+        assertEquals(Lifecycle.State.STARTED, transport.lifecycleState());
+    }
+
+    private void stopNetty4Transport(Netty4Transport transport) {
+        transport.close();
+        assertEquals(Lifecycle.State.CLOSED, transport.lifecycleState());
     }
 }
