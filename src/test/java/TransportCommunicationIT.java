@@ -48,7 +48,6 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
             for (TransportAddress transportAddress : transport.boundAddress().boundAddresses()) {
                 assert (transportAddress instanceof TransportAddress);
                 assertEquals(host, transportAddress.getAddress());
-                System.out.println(transportAddress.getPort());
                 assertEquals(port, transportAddress.getPort());
             }
 
