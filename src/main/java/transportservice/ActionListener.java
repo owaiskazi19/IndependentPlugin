@@ -16,8 +16,12 @@ public class ActionListener {
         return new InetSocketAddress(InetAddress.getLocalHost(), 0);
     }
 
-    public void runActionListener(boolean flag) {
+    public void runActionListener(boolean flag, int timeout) {
         try (ServerSocket socket = new ServerSocket()) {
+
+            // for testing considerations, otherwise zero which is interpreted as an infinite timeout
+            socket.setSoTimeout(timeout);
+
             socket.bind(getLocalEphemeral(), 1);
             socket.setReuseAddress(true);
 

@@ -41,22 +41,31 @@ public class RunPlugin {
     private static final Logger logger = LogManager.getLogger(RunPlugin.class);
     public static final TransportInterceptor NOOP_TRANSPORT_INTERCEPTOR = new TransportInterceptor() {
     };
-    ThreadPool threadPool = new ThreadPool(settings);
-    NetworkService networkService = new NetworkService(Collections.emptyList());
-    PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
-    IndicesModule indicesModule = new IndicesModule(Collections.emptyList());
-    SearchModule searchModule = new SearchModule(settings, Collections.emptyList());
-    List<NamedWriteableRegistry.Entry> namedWriteables = Stream.of(
-        NetworkModule.getNamedWriteables().stream(),
-        indicesModule.getNamedWriteables().stream(),
-        searchModule.getNamedWriteables().stream(),
-        null,
-        ClusterModule.getNamedWriteables().stream()
-    ).flatMap(Function.identity()).collect(Collectors.toList());
-    final NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(namedWriteables);
-    final CircuitBreakerService circuitBreakerService = new NoneCircuitBreakerService();
 
-    private void startTransport() {
+    PluginResponse handlePluginsRequest(PluginRequest pluginRequest) {
+        logger.info("Handling Plugins Request");
+        PluginResponse pluginResponse = new PluginResponse("RealExtension");
+        return pluginResponse;
+    }
+
+    public Netty4Transport getNetty4Transport(Settings settings, ThreadPool threadPool) {
+
+        NetworkService networkService = new NetworkService(Collections.emptyList());
+        PageCacheRecycler pageCacheRecycler = new PageCacheRecycler(settings);
+        IndicesModule indicesModule = new IndicesModule(Collections.emptyList());
+        SearchModule searchModule = new SearchModule(settings, Collections.emptyList());
+
+        List<NamedWriteableRegistry.Entry> namedWriteables = Stream.of(
+            NetworkModule.getNamedWriteables().stream(),
+            indicesModule.getNamedWriteables().stream(),
+            searchModule.getNamedWriteables().stream(),
+            null,
+            ClusterModule.getNamedWriteables().stream()
+        ).flatMap(Function.identity()).collect(Collectors.toList());
+        final NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(namedWriteables);
+
+        final CircuitBreakerService circuitBreakerService = new NoneCircuitBreakerService();
+
         Netty4Transport transport = new Netty4Transport(
             settings,
             Version.CURRENT,
@@ -67,6 +76,16 @@ public class RunPlugin {
             circuitBreakerService,
             new SharedGroupFactory(settings)
         );
+
+        return transport;
+
+    }
+
+    public TransportService getTransportService(Settings settings) throws IOException {
+
+        ThreadPool threadPool = new ThreadPool(settings);
+
+        Netty4Transport transport = getNetty4Transport(settings, threadPool);
 
         final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
@@ -85,6 +104,11 @@ public class RunPlugin {
             connectionManager
         );
 
+        return transportService;
+    }
+
+    // manager method for transport service
+    public void startTransportService(TransportService transportService) {
         transportService.start();
         transportService.acceptIncomingRequests();
         transportService.registerRequestHandler(
@@ -95,19 +119,25 @@ public class RunPlugin {
             PluginRequest::new,
             (request, channel, task) -> channel.sendResponse(handlePluginsRequest(request))
         );
-        final ActionListener actionListener = new ActionListener();
-        actionListener.runActionListener(true);
+
     }
 
-    PluginResponse handlePluginsRequest(PluginRequest pluginRequest) {
-        logger.info("Handling Plugins Request");
-        PluginResponse pluginResponse = new PluginResponse("RealExtension");
-        return pluginResponse;
+    // manager method for action listener
+    public void startActionListener(int timeout) {
+        final ActionListener actionListener = new ActionListener();
+        actionListener.runActionListener(true, timeout);
     }
 
     public static void main(String[] args) throws IOException {
+
         RunPlugin runPlugin = new RunPlugin();
-        runPlugin.startTransport();
+
+        // configure and retrieve transport service with settings
+        TransportService transportService = runPlugin.getTransportService(settings);
+
+        // start transport service and action listener
+        runPlugin.startTransportService(transportService);
+        runPlugin.startActionListener(0);
     }
 
 }
