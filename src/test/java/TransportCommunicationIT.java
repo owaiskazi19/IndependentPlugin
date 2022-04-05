@@ -33,7 +33,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
     }
 
     @Test
-    public void testSocketSetup() {
+    public void testSocketSetup() throws IOException {
 
         RunPlugin runPlugin = new RunPlugin();
         ThreadPool threadPool = new TestThreadPool("test");
