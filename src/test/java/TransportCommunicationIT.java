@@ -16,7 +16,7 @@ import org.opensearch.threadpool.ThreadPool;
 
 public class TransportCommunicationIT extends OpenSearchIntegTestCase {
 
-    private int port;
+    private final int port = 9301;
     private Settings settings;
     private final int minPort = 49152;
     private final int maxPort = 65535;
@@ -26,9 +26,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
     @BeforeEach
     public void setUp() {
 
-        // randomize port selection when creating settings
-        port = getRandomPort();
-
+        // Configure settings for transport serivce using the same port number used to bind the client
         settings = Settings.builder()
             .put("node.name", "node_extension_test")
             .put(TransportSettings.BIND_HOST.getKey(), host)
@@ -37,7 +35,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
     }
 
     @Test
-    public void testThatInfosAreExposed() {
+    public void testSocketSetup() {
 
         RunPlugin runPlugin = new RunPlugin();
         ThreadPool threadPool = new TestThreadPool("test");
@@ -46,12 +44,13 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
         // start netty transport and ensure that address info is exposed
         try {
             transport.start();
-            assertEquals(transport.lifecycleState(), Lifecycle.State.STARTED);
+            assertEquals(Lifecycle.State.STARTED, transport.lifecycleState());
 
             // check bound addresses
             for (TransportAddress transportAddress : transport.boundAddress().boundAddresses()) {
                 assert (transportAddress instanceof TransportAddress);
                 assertEquals(host, transportAddress.getAddress());
+                System.out.println(transportAddress.getPort());
                 assertEquals(port, transportAddress.getPort());
             }
 
@@ -62,6 +61,10 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
             assertEquals(port, publishAddress.address().getPort());
 
         } finally {
+            // terminate server socket and thread pool
+            transport.close();
+            assertEquals(Lifecycle.State.CLOSED, transport.lifecycleState());
+
             terminate(threadPool);
         }
     }
@@ -127,11 +130,6 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
         assertEquals("Connection refused", clientResult);
     }
 
-    private int getRandomPort() {
-        // generate port number within IANA suggested range for dynamic or private ports
-        return (int) ((Math.random() * (maxPort - minPort)) + minPort);
-    }
-
     private void startTransportandClient(Settings settings, Thread client) throws IOException, InterruptedException {
 
         // retrieve transport service
@@ -140,7 +138,7 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
 
         // start transport service
         runPlugin.startTransportService(transportService);
-        assertEquals(transportService.lifecycleState(), Lifecycle.State.STARTED);
+        assertEquals(Lifecycle.State.STARTED, transportService.lifecycleState());
 
         // connect client server to transport service
         client.start();
@@ -148,8 +146,10 @@ public class TransportCommunicationIT extends OpenSearchIntegTestCase {
         // listen for messages, set timeout to close server socket connection
         runPlugin.startActionListener(1000);
 
-        // wait for client thread to finish execution
+        // wait for client thread to finish execution, then close server socket connection
         client.join();
+        transportService.close();
+        assertEquals(Lifecycle.State.CLOSED, transportService.lifecycleState());
     }
 
 }
