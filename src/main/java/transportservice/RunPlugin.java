@@ -48,6 +48,7 @@ public class RunPlugin {
         return pluginResponse;
     }
 
+    // method : build netty transport
     public Netty4Transport getNetty4Transport(Settings settings, ThreadPool threadPool) {
 
         NetworkService networkService = new NetworkService(Collections.emptyList());
@@ -62,6 +63,7 @@ public class RunPlugin {
             null,
             ClusterModule.getNamedWriteables().stream()
         ).flatMap(Function.identity()).collect(Collectors.toList());
+
         final NamedWriteableRegistry namedWriteableRegistry = new NamedWriteableRegistry(namedWriteables);
 
         final CircuitBreakerService circuitBreakerService = new NoneCircuitBreakerService();
@@ -78,7 +80,6 @@ public class RunPlugin {
         );
 
         return transport;
-
     }
 
     public TransportService getTransportService(Settings settings) throws IOException {
@@ -89,6 +90,7 @@ public class RunPlugin {
 
         final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
+        // create transport service
         final TransportService transportService = new TransportService(
             settings,
             transport,
@@ -109,6 +111,8 @@ public class RunPlugin {
 
     // manager method for transport service
     public void startTransportService(TransportService transportService) {
+
+        // start transport service and accept incoming requests
         transportService.start();
         transportService.acceptIncomingRequests();
         transportService.registerRequestHandler(
@@ -119,7 +123,6 @@ public class RunPlugin {
             PluginRequest::new,
             (request, channel, task) -> channel.sendResponse(handlePluginsRequest(request))
         );
-
     }
 
     // manager method for action listener
