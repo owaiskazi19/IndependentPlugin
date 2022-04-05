@@ -39,7 +39,7 @@ public class RunPlugin {
 
     private final ExtensionSettings extensionSettings = getExtensionSettings();
     private final Settings settings = Settings.builder()
-        .put("node.name", extensionSettings.getNodename())
+        .put("node.name", extensionSettings.getExtensionname())
         .put(TransportSettings.BIND_HOST.getKey(), extensionSettings.getHostaddress())
         .put(TransportSettings.PORT.getKey(), extensionSettings.getHostport())
         .build();
@@ -50,8 +50,7 @@ public class RunPlugin {
     public RunPlugin() throws IOException {}
 
     public ExtensionSettings getExtensionSettings() throws IOException {
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        File file = new File(classLoader.getResource("extension.yml").getFile());
+        File file = new File(ExtensionSettings.EXTENSION_DESCRIPTOR);
         ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
         ExtensionSettings extensionSettings = objectMapper.readValue(file, ExtensionSettings.class);
         return extensionSettings;
@@ -113,7 +112,7 @@ public class RunPlugin {
             threadPool,
             NOOP_TRANSPORT_INTERCEPTOR,
             boundAddress -> DiscoveryNode.createLocal(
-                Settings.builder().put("node.name", extensionSettings.getNodename()).build(),
+                Settings.builder().put("node.name", extensionSettings.getExtensionname()).build(),
                 boundAddress.publishAddress(),
                 randomBase64UUID()
             ),

@@ -2,16 +2,17 @@ package transportservice;
 
 public class ExtensionSettings {
 
-    private String nodename;
+    private String extensionname;
     private String hostaddress;
     private String hostport;
+    static final String EXTENSION_DESCRIPTOR = "src/main/java/transportservice/extension.yml";
 
-    public String getNodename() {
-        return nodename;
+    public String getExtensionname() {
+        return extensionname;
     }
 
-    public void setNodename(String nodename) {
-        this.nodename = nodename;
+    public void setExtensionname(String extensionname) {
+        this.extensionname = extensionname;
     }
 
     public String getHostaddress() {
@@ -32,7 +33,7 @@ public class ExtensionSettings {
 
     @Override
     public String toString() {
-        return "\nnodename: " + nodename + "\nhostaddress: " + hostaddress + "\nhostPort: " + hostport + "\n";
+        return "\nnodename: " + extensionname + "\nhostaddress: " + hostaddress + "\nhostPort: " + hostport + "\n";
     }
 
 }
