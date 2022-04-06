@@ -62,7 +62,7 @@ import org.opensearch.common.unit.ByteSizeValue;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.common.util.concurrent.OpenSearchExecutors;
 import org.opensearch.core.internal.net.NetUtils;
-import org.opensearch.discovery.Discoverable;
+import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.threadpool.ThreadPool;
 import transportservice.Netty4NioSocketChannel;
@@ -299,7 +299,7 @@ public class Netty4Transport extends TcpTransport {
         return new ServerChannelInitializer(name);
     }
 
-    protected ChannelHandler getClientChannelInitializer(Discoverable node) {
+    protected ChannelHandler getClientChannelInitializer(DiscoveryNode node) {
         return new ClientChannelInitializer();
     }
 
@@ -307,7 +307,7 @@ public class Netty4Transport extends TcpTransport {
     static final AttributeKey<Netty4TcpServerChannel> SERVER_CHANNEL_KEY = AttributeKey.newInstance("es-server-channel");
 
     @Override
-    protected Netty4TcpChannel initiateChannel(Discoverable node) throws IOException {
+    protected Netty4TcpChannel initiateChannel(DiscoveryNode node) throws IOException {
         InetSocketAddress address = node.getAddress().address();
         Bootstrap bootstrapWithHandler = clientBootstrap.clone();
         bootstrapWithHandler.handler(getClientChannelInitializer(node));
