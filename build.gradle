@@ -34,6 +34,7 @@ repositories {
     mavenLocal()
     // Remove the commented code below once TransportService is published to maven
     //maven { url "https://aws.oss.sonatype.org/content/repositories/snapshots" }
+    maven { url "https://d1nvenhzbhpy0q.cloudfront.net/snapshots/lucene/"}
     mavenCentral()
 }
 
