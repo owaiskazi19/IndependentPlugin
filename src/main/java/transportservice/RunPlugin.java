@@ -25,13 +25,13 @@ import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.discovery.PluginRequest;
 import org.opensearch.discovery.PluginResponse;
+import org.opensearch.extensions.ExtensionsOrchestrator;
 import org.opensearch.index.IndicesModuleNameResponse;
 import org.opensearch.index.IndicesModuleRequest;
 import org.opensearch.index.IndicesModuleResponse;
 import org.opensearch.indices.IndicesModule;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.indices.breaker.NoneCircuitBreakerService;
-import org.opensearch.plugins.PluginsOrchestrator;
 import org.opensearch.search.SearchModule;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.ClusterConnectionManager;
@@ -180,7 +180,7 @@ public class RunPlugin {
         );
 
         transportService.registerRequestHandler(
-            PluginsOrchestrator.INDICES_EXTENSION_POINT_ACTION_NAME,
+            ExtensionsOrchestrator.INDICES_EXTENSION_POINT_ACTION_NAME,
             ThreadPool.Names.GENERIC,
             false,
             false,
@@ -189,7 +189,7 @@ public class RunPlugin {
 
         );
         transportService.registerRequestHandler(
-            PluginsOrchestrator.INDICES_EXTENSION_NAME_ACTION_NAME,
+            ExtensionsOrchestrator.INDICES_EXTENSION_NAME_ACTION_NAME,
             ThreadPool.Names.GENERIC,
             false,
             false,
