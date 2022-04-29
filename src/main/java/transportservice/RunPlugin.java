@@ -25,13 +25,21 @@ import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.discovery.PluginRequest;
 import org.opensearch.discovery.PluginResponse;
+import org.opensearch.extensions.ExtensionsOrchestrator;
+import org.opensearch.index.IndicesModuleNameResponse;
+import org.opensearch.index.IndicesModuleRequest;
+import org.opensearch.index.IndicesModuleResponse;
 import org.opensearch.indices.IndicesModule;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.indices.breaker.NoneCircuitBreakerService;
 import org.opensearch.search.SearchModule;
 import org.opensearch.threadpool.ThreadPool;
-import org.opensearch.transport.*;
+import org.opensearch.transport.ClusterConnectionManager;
+import org.opensearch.transport.ConnectionManager;
+import org.opensearch.transport.TransportService;
 import transportservice.netty4.Netty4Transport;
+import org.opensearch.transport.TransportSettings;
+import org.opensearch.transport.TransportInterceptor;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,6 +88,19 @@ public class RunPlugin {
         logger.info("Handling Plugins Request");
         PluginResponse pluginResponse = new PluginResponse("RealExtension");
         return pluginResponse;
+    }
+
+    IndicesModuleResponse handleIndicesModuleRequest(IndicesModuleRequest indicesModuleRequest) {
+        logger.info("Indices Module Request");
+        IndicesModuleResponse indicesModuleResponse = new IndicesModuleResponse(true, true, true);
+        return indicesModuleResponse;
+    }
+
+    // Works as beforeIndexRemoved
+    IndicesModuleNameResponse handleIndicesModuleNameRequest(IndicesModuleRequest indicesModuleRequest) {
+        logger.info("Indices Module Name Request");
+        IndicesModuleNameResponse indicesModuleNameResponse = new IndicesModuleNameResponse(true);
+        return indicesModuleNameResponse;
     }
 
     // method : build netty transport
@@ -157,6 +178,25 @@ public class RunPlugin {
             PluginRequest::new,
             (request, channel, task) -> channel.sendResponse(handlePluginsRequest(request))
         );
+
+        transportService.registerRequestHandler(
+            ExtensionsOrchestrator.INDICES_EXTENSION_POINT_ACTION_NAME,
+            ThreadPool.Names.GENERIC,
+            false,
+            false,
+            IndicesModuleRequest::new,
+            ((request, channel, task) -> channel.sendResponse(handleIndicesModuleRequest(request)))
+
+        );
+        transportService.registerRequestHandler(
+            ExtensionsOrchestrator.INDICES_EXTENSION_NAME_ACTION_NAME,
+            ThreadPool.Names.GENERIC,
+            false,
+            false,
+            IndicesModuleRequest::new,
+            ((request, channel, task) -> channel.sendResponse(handleIndicesModuleNameRequest(request)))
+        );
+
     }
 
     // manager method for action listener
