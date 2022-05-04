@@ -16,6 +16,10 @@ public class ExtensionSettings {
     private String extensionname;
     private String hostaddress;
     private String hostport;
+    private String description;
+    private String version;
+    private String opensearchversion;
+
     // Change the location to extension.yml file of the extension
     static final String EXTENSION_DESCRIPTOR = "src/test/resources/extension.yml";
 
@@ -43,9 +47,27 @@ public class ExtensionSettings {
         this.hostport = hostport;
     }
 
-    @Override
-    public String toString() {
-        return "\nnodename: " + extensionname + "\nhostaddress: " + hostaddress + "\nhostPort: " + hostport + "\n";
+    public String getDescription() {
+        return description;
     }
 
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+    public String getOpensearchversion() {
+        return opensearchversion;
+    }
+
+    public void setOpensearchversion(String opensearchversion) {
+        this.opensearchversion = opensearchversion;
+    }
 }
