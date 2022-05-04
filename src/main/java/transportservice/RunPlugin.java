@@ -15,36 +15,38 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.Version;
 import org.opensearch.cluster.ClusterModule;
+import org.opensearch.cluster.ClusterServiceRequest;
+import org.opensearch.cluster.CreateComponentResponse;
 import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.common.io.stream.NamedWriteableRegistry;
+import org.opensearch.common.io.stream.StreamInput;
 import org.opensearch.common.network.NetworkModule;
 import org.opensearch.common.network.NetworkService;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.PageCacheRecycler;
 import org.opensearch.discovery.PluginRequest;
 import org.opensearch.discovery.PluginResponse;
-import org.opensearch.extensions.ExtensionsOrchestrator;
 import org.opensearch.index.IndicesModuleNameResponse;
 import org.opensearch.index.IndicesModuleRequest;
 import org.opensearch.index.IndicesModuleResponse;
 import org.opensearch.indices.IndicesModule;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.indices.breaker.NoneCircuitBreakerService;
+import org.opensearch.extensions.ExtensionsOrchestrator;
 import org.opensearch.search.SearchModule;
 import org.opensearch.threadpool.ThreadPool;
-import org.opensearch.transport.ClusterConnectionManager;
-import org.opensearch.transport.ConnectionManager;
-import org.opensearch.transport.TransportService;
+import org.opensearch.transport.*;
 import transportservice.netty4.Netty4Transport;
-import org.opensearch.transport.TransportSettings;
-import org.opensearch.transport.TransportInterceptor;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -57,6 +59,8 @@ public class RunPlugin {
     public static final String REQUEST_EXTENSION_ACTION_NAME = "internal:discovery/extensions";
 
     private static ExtensionSettings extensionSettings = null;
+
+    private DiscoveryNode opensearchNode = null;
 
     static {
         try {
@@ -87,12 +91,60 @@ public class RunPlugin {
     PluginResponse handlePluginsRequest(PluginRequest pluginRequest) {
         logger.info("Handling Plugins Request");
         PluginResponse pluginResponse = new PluginResponse("RealExtension");
+        opensearchNode = pluginRequest.getSourceNode();
+        System.out.println("OpenSourceNode - -- 1" + opensearchNode);
         return pluginResponse;
     }
 
-    IndicesModuleResponse handleIndicesModuleRequest(IndicesModuleRequest indicesModuleRequest) {
+
+    IndicesModuleResponse handleIndicesModuleRequest(IndicesModuleRequest indicesModuleRequest) throws IOException {
         logger.info("Indices Module Request");
         IndicesModuleResponse indicesModuleResponse = new IndicesModuleResponse(true, true, true);
+
+        TransportService transportService = getTransportService(settings);
+
+        final CountDownLatch inProgressLatch = new CountDownLatch(1);
+
+        final TransportResponseHandler<CreateComponentResponse> createComponentResponseHandler = new TransportResponseHandler<CreateComponentResponse>() {
+
+            @Override
+            public void handleResponse(CreateComponentResponse response) {
+                logger.info("received {}", response);
+                inProgressLatch.countDown();
+            }
+
+            @Override
+            public void handleException(TransportException exp) {
+                logger.debug(new ParameterizedMessage("CreateComponentRequest failed"), exp);
+            }
+
+            @Override
+            public String executor() {
+                return ThreadPool.Names.GENERIC;
+            }
+
+            @Override
+            public CreateComponentResponse read(StreamInput in) throws IOException {
+                return new CreateComponentResponse(in);
+            }
+        };
+        System.out.println("OpenSourceNode - -- 2" + opensearchNode);
+            try{
+                logger.info("Sending request to opensearch");
+                transportService.connectToNode(opensearchNode);
+                transportService.sendRequest(
+                        opensearchNode,
+                        ExtensionsOrchestrator.REQUEST_EXTENSION_ACTION_NAME,
+                        new ClusterServiceRequest(),
+                        createComponentResponseHandler
+                );
+                inProgressLatch.await(100, TimeUnit.SECONDS);
+                logger.info("Received response from OpenSearch");
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error(e.toString());
+            }
+
         return indicesModuleResponse;
     }
 
@@ -146,6 +198,7 @@ public class RunPlugin {
         final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
         // create transport service
+
         final TransportService transportService = new TransportService(
             settings,
             transport,
@@ -180,7 +233,7 @@ public class RunPlugin {
         );
 
         transportService.registerRequestHandler(
-            ExtensionsOrchestrator.INDICES_EXTENSION_POINT_ACTION_NAME,
+                ExtensionsOrchestrator.INDICES_EXTENSION_POINT_ACTION_NAME,
             ThreadPool.Names.GENERIC,
             false,
             false,
@@ -188,8 +241,7 @@ public class RunPlugin {
             ((request, channel, task) -> channel.sendResponse(handleIndicesModuleRequest(request)))
 
         );
-        transportService.registerRequestHandler(
-            ExtensionsOrchestrator.INDICES_EXTENSION_NAME_ACTION_NAME,
+        transportService.registerRequestHandler(ExtensionsOrchestrator.INDICES_EXTENSION_NAME_ACTION_NAME,
             ThreadPool.Names.GENERIC,
             false,
             false,
