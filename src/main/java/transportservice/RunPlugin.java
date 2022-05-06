@@ -26,7 +26,9 @@ import org.opensearch.common.io.stream.StreamInput;
 import org.opensearch.common.network.NetworkModule;
 import org.opensearch.common.network.NetworkService;
 import org.opensearch.common.settings.Settings;
+import org.opensearch.common.transport.TransportAddress;
 import org.opensearch.common.util.PageCacheRecycler;
+import org.opensearch.discovery.PeerFinder.TransportAddressConnector;
 import org.opensearch.discovery.PluginRequest;
 import org.opensearch.discovery.PluginResponse;
 import org.opensearch.index.IndicesModuleNameResponse;
@@ -43,6 +45,7 @@ import transportservice.netty4.Netty4Transport;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -61,6 +64,12 @@ public class RunPlugin {
     private static ExtensionSettings extensionSettings = null;
 
     private DiscoveryNode opensearchNode = null;
+
+    private TransportAddressConnector transportAddressConnector = null;
+
+    private TransportAddress opensearchNodeAddress = null;
+
+    private Netty4Transport transport = null;
 
     static {
         try {
@@ -92,20 +101,22 @@ public class RunPlugin {
         logger.info("Handling Plugins Request");
         PluginResponse pluginResponse = new PluginResponse("RealExtension");
         opensearchNode = pluginRequest.getSourceNode();
+        opensearchNodeAddress = pluginRequest.getSourceNode().getAddress();
         System.out.println("OpenSourceNode - -- 1" + opensearchNode);
         return pluginResponse;
     }
-
 
     IndicesModuleResponse handleIndicesModuleRequest(IndicesModuleRequest indicesModuleRequest) throws IOException {
         logger.info("Indices Module Request");
         IndicesModuleResponse indicesModuleResponse = new IndicesModuleResponse(true, true, true);
 
         TransportService transportService = getTransportService(settings);
+        // transportAddressConnector = new HandshakingTransportAddressConnector(settings, transportService);
 
         final CountDownLatch inProgressLatch = new CountDownLatch(1);
 
-        final TransportResponseHandler<CreateComponentResponse> createComponentResponseHandler = new TransportResponseHandler<CreateComponentResponse>() {
+        final TransportResponseHandler<CreateComponentResponse> createComponentResponseHandler = new TransportResponseHandler<
+            CreateComponentResponse>() {
 
             @Override
             public void handleResponse(CreateComponentResponse response) {
@@ -116,6 +127,7 @@ public class RunPlugin {
             @Override
             public void handleException(TransportException exp) {
                 logger.debug(new ParameterizedMessage("CreateComponentRequest failed"), exp);
+                // inProgressLatch.countDown();
             }
 
             @Override
@@ -129,21 +141,52 @@ public class RunPlugin {
             }
         };
         System.out.println("OpenSourceNode - -- 2" + opensearchNode);
-            try{
-                logger.info("Sending request to opensearch");
-                transportService.connectToNode(opensearchNode);
-                transportService.sendRequest(
-                        opensearchNode,
-                        ExtensionsOrchestrator.REQUEST_EXTENSION_ACTION_NAME,
-                        new ClusterServiceRequest(),
-                        createComponentResponseHandler
-                );
-                inProgressLatch.await(100, TimeUnit.SECONDS);
-                logger.info("Received response from OpenSearch");
-            } catch (Exception e) {
-                e.printStackTrace();
-                logger.error(e.toString());
-            }
+        try {
+            logger.info("Sending request to opensearch");
+            // transportAddressConnector.connectToRemoteMasterNode(opensearchNodeAddress, new ActionListener<DiscoveryNode>() {
+            // @Override
+            // public void onResponse(DiscoveryNode discoveryNode) {
+            // inProgressLatch.countDown();
+            // }
+            //
+            // @Override
+            // public void onFailure(Exception e) {
+            // logger.error(e);
+            // }
+            // });
+            // if (opensearchNode.isMasterNode()) {
+            // logger.info("MASTER NODE");
+            // } else if(opensearchNode.isRemoteClusterClient()) {
+            // logger.info("REMOTE CLUSTER CLIENT");
+            // } else if (opensearchNode.isDataNode()) {
+            // logger.info("DATA NODE");
+            // } else if (opensearchNode.isIngestNode()) {
+            // logger.info("INGEST");
+            // }
+            // TimeValue oneSecond = new TimeValue(1000);
+            // TimeValue oneMinute = TimeValue.timeValueMinutes(1);
+            // ConnectionProfile connectionProfile = ConnectionProfile.buildSingleChannelProfile(
+            // TransportRequestOptions.Type.REG,
+            // oneSecond,
+            // oneSecond,
+            // oneMinute,
+            // false
+            // );
+            // transportService.openConnection(opensearchNode, connectionProfile);
+
+            // transportService.connectToNode(opensearchNode);
+            transportService.sendRequest(
+                opensearchNode,
+                ExtensionsOrchestrator.REQUEST_EXTENSION_ACTION_NAME,
+                new ClusterServiceRequest(),
+                createComponentResponseHandler
+            );
+            inProgressLatch.await(100, TimeUnit.SECONDS);
+            logger.info("Received response from OpenSearch");
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error(e.toString());
+        }
 
         return indicesModuleResponse;
     }
@@ -193,7 +236,7 @@ public class RunPlugin {
 
         ThreadPool threadPool = new ThreadPool(settings);
 
-        Netty4Transport transport = getNetty4Transport(settings, threadPool);
+        transport = getNetty4Transport(settings, threadPool);
 
         final ConnectionManager connectionManager = new ClusterConnectionManager(settings, transport);
 
@@ -233,7 +276,7 @@ public class RunPlugin {
         );
 
         transportService.registerRequestHandler(
-                ExtensionsOrchestrator.INDICES_EXTENSION_POINT_ACTION_NAME,
+            ExtensionsOrchestrator.INDICES_EXTENSION_POINT_ACTION_NAME,
             ThreadPool.Names.GENERIC,
             false,
             false,
@@ -241,7 +284,8 @@ public class RunPlugin {
             ((request, channel, task) -> channel.sendResponse(handleIndicesModuleRequest(request)))
 
         );
-        transportService.registerRequestHandler(ExtensionsOrchestrator.INDICES_EXTENSION_NAME_ACTION_NAME,
+        transportService.registerRequestHandler(
+            ExtensionsOrchestrator.INDICES_EXTENSION_NAME_ACTION_NAME,
             ThreadPool.Names.GENERIC,
             false,
             false,
@@ -253,7 +297,7 @@ public class RunPlugin {
 
     // manager method for action listener
     public void startActionListener(int timeout) {
-        final ActionListener actionListener = new ActionListener();
+        final transportservice.ActionListener actionListener = new transportservice.ActionListener();
         actionListener.runActionListener(true, timeout);
     }
 
@@ -267,6 +311,13 @@ public class RunPlugin {
         // start transport service and action listener
         runPlugin.startTransportService(transportService);
         runPlugin.startActionListener(0);
+
+        DiscoveryNode dummyNode = new DiscoveryNode(
+            "runTask-0",
+            new TransportAddress(InetAddress.getByName("127.0.0.1"), 9200),
+            Version.CURRENT
+        );
+        transportService.connectToNode(dummyNode);
     }
 
 }
